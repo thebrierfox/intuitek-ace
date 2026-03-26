@@ -1,9 +1,8 @@
 # railway.toml — ACE Server deployment configuration
-# Deploy: railway up from /ace/server/
+# Deploy: railway up from repo root
 
 [build]
 builder = "nixpacks"
-rootDirectory = "projects/intuitek-ace"
 
 [deploy]
 startCommand = "uvicorn ace_server:app --host 0.0.0.0 --port $PORT --workers 2"

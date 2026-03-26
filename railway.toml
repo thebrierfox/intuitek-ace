@@ -1,0 +1,8 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "python -u main.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+port = 8000

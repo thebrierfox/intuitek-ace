@@ -1,15 +1,18 @@
-# Build timestamp: $(date +%s)
 FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ace_server.py .
+# Copy the correct app file
+COPY ace_server.py ./app.py
 COPY package_generator.py .
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:8080/health')" || exit 1
+  CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["uvicorn", "ace_server:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]

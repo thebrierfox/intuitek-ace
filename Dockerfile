@@ -20,4 +20,5 @@ COPY package_generator.py .
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
+# Force rebuild timestamp: 2026-03-28T23:08:00Z
 CMD ["python", "-m", "uvicorn", "ace_server:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "debug"]

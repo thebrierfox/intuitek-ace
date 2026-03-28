@@ -55,6 +55,16 @@ log = logging.getLogger("ace")
 
 # ── DATABASE ─────────────────────────────────────────────────
 def get_db() -> sqlite3.Connection:
+    # Ensure parent directory exists before opening database
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.isdir(db_dir):
+        try:
+            os.makedirs(db_dir, mode=0o755, exist_ok=True)
+            log.info("Created database directory: %s", db_dir)
+        except PermissionError as e:
+            log.error("FATAL: Cannot create database directory %s: %s", db_dir, e)
+            raise RuntimeError(f"Cannot create db directory '{db_dir}': {e}") from e
+    
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")

@@ -63,7 +63,99 @@ def get_db() -> sqlite3.Connection:
 
 
 def init_db():
-    schema = (Path(__file__).parent / "schema.sql").read_text()
+    # Inline schema to avoid file dependency in Docker
+    schema = """
+CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS licenses (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    key TEXT UNIQUE NOT NULL,
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    stripe_subscription_id TEXT UNIQUE,
+    status TEXT DEFAULT 'active',
+    plan_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS agents (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    model TEXT DEFAULT 'claude-sonnet-4-20250514',
+    config JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS intake_forms (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    business_type TEXT,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS agent_packages (
+    id TEXT PRIMARY KEY,
+    intake_form_id TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    package_data JSONB,
+    delivery_status TEXT DEFAULT 'pending',
+    delivered_at TIMESTAMP,
+    FOREIGN KEY (intake_form_id) REFERENCES intake_forms(id),
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    stripe_invoice_id TEXT UNIQUE,
+    amount_cents INTEGER,
+    status TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_data JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+
+CREATE INDEX IF NOT EXISTS idx_licenses_account_id ON licenses(account_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_account_id ON subscriptions(account_id);
+CREATE INDEX IF NOT EXISTS idx_agents_account_id ON agents(account_id);
+CREATE INDEX IF NOT EXISTS idx_intake_forms_account_id ON intake_forms(account_id);
+CREATE INDEX IF NOT EXISTS idx_agent_packages_intake_form_id ON agent_packages(intake_form_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_account_id ON invoices(account_id);
+CREATE INDEX IF NOT EXISTS idx_events_account_id ON events(account_id);
+"""
     with get_db() as conn:
         conn.executescript(schema)
     log.info("ACE database initialized at %s", DB_PATH)

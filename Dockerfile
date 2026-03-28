@@ -1,5 +1,6 @@
 # ACE Server - Stripe Webhook Handler
 # Schema is inlined in ace_server.py (no external schema.sql needed)
+# Build timestamp: 2026-03-28T03:33:00Z
 
 FROM python:3.11-slim
 

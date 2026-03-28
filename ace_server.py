@@ -53,6 +53,15 @@ logging.basicConfig(
 )
 log = logging.getLogger("ace")
 
+# ── STARTUP DIAGNOSTICS ──────────────────────────────────────
+log.info("[ACE] Startup — checking database configuration")
+log.info("[ACE] DB_PATH resolved to: %s", DB_PATH)
+db_dir = os.path.dirname(DB_PATH)
+log.info("[ACE] DB parent directory: %s", db_dir if db_dir else "(current dir)")
+log.info("[ACE] DB dir exists: %s", os.path.isdir(db_dir) if db_dir else "N/A (using cwd)")
+if db_dir:
+    log.info("[ACE] DB dir writable: %s", os.access(db_dir, os.W_OK))
+
 # ── DATABASE ─────────────────────────────────────────────────
 def get_db() -> sqlite3.Connection:
     # Ensure parent directory exists before opening database

@@ -1,12 +1,12 @@
 # railway.toml — ACE Server deployment configuration
 # Deploy: railway up from repo root
-# Updated: 2026-03-26 08:42 UTC (forcing rebuild)
+# Updated: 2026-03-27 21:59 UTC
 
 [build]
-builder = "nixpacks"
+builder = "docker"
 
 [deploy]
-startCommand = "uvicorn ace_server:app --host 0.0.0.0 --port $PORT --workers 2"
+startCommand = "uvicorn ace_server:app --host 0.0.0.0 --port 8080"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 
@@ -17,4 +17,3 @@ restartPolicyMaxRetries = 5
 # STRIPE_WEBHOOK_SECRET  = whsec_...
 # RESEND_API_KEY         = re_...
 # FERNET_KEY             = <generated>
-# PORT                   = 8000 (Railway sets automatically)

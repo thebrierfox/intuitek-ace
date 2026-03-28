@@ -502,3 +502,5 @@ async def health():
         "mrr_cents": active * PRICE_CENTS,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+# Rebuild marker: 1774668014

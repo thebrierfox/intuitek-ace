@@ -36,11 +36,11 @@ from slowapi.util import get_remote_address
 from package_generator import generate_and_deliver
 
 # ── CONFIGURATION ────────────────────────────────────────────
-DB_PATH              = os.environ["ACE_DB_PATH"]              # e.g. /data/ace.db
-STRIPE_SECRET_KEY    = os.environ["STRIPE_SECRET_KEY"]
-STRIPE_WEBHOOK_SECRET= os.environ["STRIPE_WEBHOOK_SECRET"]
-RESEND_API_KEY       = os.environ["RESEND_API_KEY"]
-FERNET_KEY           = os.environ["FERNET_KEY"].encode()      # bytes
+DB_PATH              = os.environ.get("ACE_DB_PATH", "/data/ace.db")
+STRIPE_SECRET_KEY    = os.environ.get("STRIPE_SECRET_KEY", "sk_test_dev")
+STRIPE_WEBHOOK_SECRET= os.environ.get("STRIPE_WEBHOOK_SECRET", "whsec_dev")
+RESEND_API_KEY       = os.environ.get("RESEND_API_KEY", "dev_token")
+FERNET_KEY           = os.environ.get("FERNET_KEY", "Drmhze6EPcv0fN_81Bj-nA==").encode()  # bytes
 PRICE_CENTS          = 3900                                   # $39.00/month
 
 stripe.api_key = STRIPE_SECRET_KEY

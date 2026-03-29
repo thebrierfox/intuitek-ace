@@ -92,6 +92,14 @@ CREATE TABLE IF NOT EXISTS accounts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT,
+    stripe_customer_id TEXT UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS licenses (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL,
@@ -118,7 +126,7 @@ CREATE TABLE IF NOT EXISTS agents (
     account_id TEXT NOT NULL,
     name TEXT NOT NULL,
     model TEXT DEFAULT 'claude-sonnet-4-20250514',
-    config JSONB,
+    config TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
@@ -138,7 +146,7 @@ CREATE TABLE IF NOT EXISTS agent_packages (
     id TEXT PRIMARY KEY,
     intake_form_id TEXT NOT NULL,
     agent_id TEXT NOT NULL,
-    package_data JSONB,
+    package_data TEXT,
     delivery_status TEXT DEFAULT 'pending',
     delivered_at TIMESTAMP,
     FOREIGN KEY (intake_form_id) REFERENCES intake_forms(id),
@@ -159,7 +167,7 @@ CREATE TABLE IF NOT EXISTS events (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL,
     event_type TEXT NOT NULL,
-    event_data JSONB,
+    event_data TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (account_id) REFERENCES accounts(id)
 );

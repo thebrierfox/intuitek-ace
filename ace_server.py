@@ -97,7 +97,18 @@ CREATE TABLE IF NOT EXISTS customers (
     email TEXT UNIQUE NOT NULL,
     name TEXT,
     stripe_customer_id TEXT UNIQUE,
+    status TEXT DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS provision_log (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    step TEXT,
+    status TEXT,
+    detail TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
 );
 
 CREATE TABLE IF NOT EXISTS licenses (

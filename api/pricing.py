@@ -81,3 +81,17 @@ PRICING = {
 async def get_pricing():
     """Machine-readable pricing for all IntuiTek\u00b9 products and services."""
     return JSONResponse(content=PRICING)
+
+
+@pricing_router.get("/{product_id}")
+async def get_pricing_by_product(product_id: str):
+    """Return pricing for a specific product by ID."""
+    from fastapi import HTTPException
+    product = next((p for p in PRICING["products"] if p["id"] == product_id), None)
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Product '{product_id}' not found. "
+                   f"Available: {[p['id'] for p in PRICING['products']]}",
+        )
+    return JSONResponse(content=product)

@@ -634,3 +634,27 @@ async def health():
     }
 
 # Rebuild marker: 1774668014
+
+# ══════════════════════════════════════════════════════════════
+# MCP SERVERS + API ROUTERS  (added below existing routes)
+# ══════════════════════════════════════════════════════════════
+from mcp.yield_server import yield_mcp_app
+from mcp.ace_server import ace_mcp_app
+from mcp.counselor_server import counselor_mcp_app
+from api.pricing import pricing_router
+from api.checkouts import checkouts_router
+from api.agent_card import agent_card_router
+from middleware.x402 import X402Middleware
+
+# MCP Streamable HTTP servers
+app.mount("/yield", yield_mcp_app)
+app.mount("/ace", ace_mcp_app)
+app.mount("/counselor", counselor_mcp_app)
+
+# REST API endpoints
+app.include_router(pricing_router, prefix="/pricing")
+app.include_router(checkouts_router, prefix="/checkouts")
+app.include_router(agent_card_router)  # handles /.well-known/agent-card.json
+
+# x402 payment middleware (applies to /v1/* routes)
+app.add_middleware(X402Middleware)

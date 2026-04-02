@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ace_server.py .
 COPY package_generator.py .
+COPY mcp/ ./mcp/
+COPY api/ ./api/
+COPY middleware/ ./middleware/
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1

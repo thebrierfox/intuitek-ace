@@ -28,6 +28,7 @@ import stripe
 from cryptography.fernet import Fernet
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -617,6 +618,24 @@ async def _provision_customer(customer_data: dict):
 
 
 # ══════════════════════════════════════════════════════════════
+# POST-PAYMENT SUCCESS PAGE
+# ══════════════════════════════════════════════════════════════
+@app.get("/success", response_class=HTMLResponse)
+async def success_page():
+    """Stripe post-payment redirect — clean confirmation page."""
+    html_path = Path(__file__).parent / "success.html"
+    if html_path.exists():
+        return HTMLResponse(content=html_path.read_text(), status_code=200)
+    # Fallback if file somehow missing
+    return HTMLResponse(content="""
+    <html><body style="font-family:sans-serif;text-align:center;padding:60px;background:#0a0a0f;color:#e8e8f0;">
+    <h1>&#10003; Payment confirmed.</h1>
+    <p>Your license will be delivered to your email within 2 minutes.</p>
+    <p><a href="https://www.shopclawmart.com/thebrierfox" style="color:#7c3aed;">Browse more skills</a></p>
+    </body></html>
+    """, status_code=200)
+
+
 # HEALTH / AEGIS PROBE
 # ══════════════════════════════════════════════════════════════
 @app.get("/health")

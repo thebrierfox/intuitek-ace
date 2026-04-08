@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ace_server.py .
 COPY package_generator.py .
+COPY success.html .
 COPY mcp/ ./mcp/
 COPY api/ ./api/
 COPY middleware/ ./middleware/

@@ -195,61 +195,6 @@ class AceMCPServer(MCPServer):
             }
 
         if payment_method == "x402":
-<<<<<<< HEAD
-            from middleware.x402 import X402_PAYMENT_REQUIREMENTS, PAY_TO_ADDRESS
-            return {
-                "status": "payment_required",
-                "protocol": "x402",
-                "product_id": product_id,
-                "price_per_call_usd": price,
-                "payment_requirements": X402_PAYMENT_REQUIREMENTS,
-                "instructions": (
-                    "Send USDC on Base via x402 protocol. "
-                    "Retry the API call with the x-payment header containing the payment proof."
-                ),
-                "pay_to": PAY_TO_ADDRESS,
-            }
-
-        sub_model = next(
-            (m for m in product["pricing_models"] if m["type"] == "subscription"), None
-        )
-        if not sub_model or not sub_model.get("tiers"):
-            return {
-                "status": "error",
-                "error": "No subscription pricing available for this product.",
-                "product_id": product_id,
-            }
-
-        tier_info = sub_model["tiers"][0]
-        stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
-        if not stripe_key:
-            return {
-                "status": "error",
-                "error": "Payment processing unavailable.",
-                "contact": "agent@intuitek.ai",
-            }
-
-        stripe.api_key = stripe_key
-        try:
-            session = stripe.checkout.Session.create(
-                mode="subscription",
-                line_items=[{
-                    "price_data": {
-                        "currency": "usd",
-                        "unit_amount": int(tier_info["price_usd"] * 100),
-                        "recurring": {"interval": tier_info.get("period", "month")},
-                        "product_data": {
-                            "name": f"IntuiTek¹ {product['name']} ({tier_info['name']})",
-                        },
-                    },
-                    "quantity": 1,
-                }],
-                success_url="https://intuitek.ai/success",
-                cancel_url="https://intuitek.ai/pricing",
-                metadata={
-                    "product_id": product_id,
-                    "tier": tier_info["name"],
-=======
             usdc_micro = str(int(per_call_price * 1_000_000))
             return {
                 "status": "payment_required",
@@ -313,21 +258,10 @@ class AceMCPServer(MCPServer):
                 metadata={
                     "product_id": product_id,
                     "tier": tier,
->>>>>>> b6a36c5 (A2+A3: Wire real PAY_TO address, replace purchase execution stub)
                     "payment_method": payment_method,
                 },
             )
             return {
-<<<<<<< HEAD
-                "status": "payment_required",
-                "product_id": product_id,
-                "tier": tier_info["name"],
-                "price_usd": tier_info["price_usd"],
-                "period": tier_info.get("period", "month"),
-                "checkout_url": session.url,
-                "session_id": session.id,
-                "instructions": "Direct user to checkout_url to complete subscription.",
-=======
                 "status": "checkout_created",
                 "product_id": product_id,
                 "tier": tier,
@@ -339,19 +273,14 @@ class AceMCPServer(MCPServer):
                     "Complete payment at checkout_url to activate subscription. "
                     "License delivered by email within 5 minutes of payment."
                 ),
->>>>>>> b6a36c5 (A2+A3: Wire real PAY_TO address, replace purchase execution stub)
             }
         except Exception as exc:
             return {
                 "status": "error",
-<<<<<<< HEAD
-                "error": f"Checkout creation failed: {exc}",
-                "contact": "agent@intuitek.ai",
-=======
                 "error": str(exc),
                 "product_id": product_id,
+                "contact": "agent@intuitek.ai",
                 "fallback": "https://api.intuitek.ai/checkouts",
->>>>>>> b6a36c5 (A2+A3: Wire real PAY_TO address, replace purchase execution stub)
             }
 
     def _get_pricing(self, args: Dict) -> Dict:

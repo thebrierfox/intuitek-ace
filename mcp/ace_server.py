@@ -6,6 +6,7 @@ import json
 import os
 from typing import Any, Dict
 
+import stripe
 from mcp.server import MCPServer
 
 ACE_TOOLS = [
@@ -131,9 +132,9 @@ PRICING_DATA = {
         },
     ],
     "mcp_servers": [
-        {"product": "yield-intelligence", "url": "https://mcp.intuitek.ai/yield", "transport": "streamable-http"},
-        {"product": "ace", "url": "https://mcp.intuitek.ai/ace", "transport": "streamable-http"},
-        {"product": "counselor", "url": "https://mcp.intuitek.ai/counselor", "transport": "streamable-http"},
+        {"product": "yield-intelligence", "url": "https://ace-license-server-production.up.railway.app/mcp/yield", "transport": "streamable-http"},
+        {"product": "ace", "url": "https://ace-license-server-production.up.railway.app/mcp/ace", "transport": "streamable-http"},
+        {"product": "counselor", "url": "https://ace-license-server-production.up.railway.app/mcp/counselor", "transport": "streamable-http"},
     ],
 }
 
@@ -159,7 +160,6 @@ class AceMCPServer(MCPServer):
         payment_method = args.get("payment_method")
         limit = args.get("spending_limit_usd")
 
-        # Find product pricing
         product = next(
             (p for p in PRICING_DATA["products"] if p["id"] == product_id), None
         )
@@ -182,17 +182,79 @@ class AceMCPServer(MCPServer):
                 "product_id": product_id,
             }
 
-        return {
-            "status": "stub_pending",
-            "product_id": product_id,
-            "payment_method": payment_method,
-            "price_usd": price,
-            "message": (
-                "Purchase execution stub — full ACP/x402 integration in v2. "
-                "Contact sales@intuitek.ai to provision access."
-            ),
-            "checkout_url": "https://api.intuitek.ai/checkouts",
-        }
+        if payment_method == "x402":
+            from middleware.x402 import X402_PAYMENT_REQUIREMENTS, PAY_TO_ADDRESS
+            return {
+                "status": "payment_required",
+                "protocol": "x402",
+                "product_id": product_id,
+                "price_per_call_usd": price,
+                "payment_requirements": X402_PAYMENT_REQUIREMENTS,
+                "instructions": (
+                    "Send USDC on Base via x402 protocol. "
+                    "Retry the API call with the x-payment header containing the payment proof."
+                ),
+                "pay_to": PAY_TO_ADDRESS,
+            }
+
+        sub_model = next(
+            (m for m in product["pricing_models"] if m["type"] == "subscription"), None
+        )
+        if not sub_model or not sub_model.get("tiers"):
+            return {
+                "status": "error",
+                "error": "No subscription pricing available for this product.",
+                "product_id": product_id,
+            }
+
+        tier_info = sub_model["tiers"][0]
+        stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        if not stripe_key:
+            return {
+                "status": "error",
+                "error": "Payment processing unavailable.",
+                "contact": "agent@intuitek.ai",
+            }
+
+        stripe.api_key = stripe_key
+        try:
+            session = stripe.checkout.Session.create(
+                mode="subscription",
+                line_items=[{
+                    "price_data": {
+                        "currency": "usd",
+                        "unit_amount": int(tier_info["price_usd"] * 100),
+                        "recurring": {"interval": tier_info.get("period", "month")},
+                        "product_data": {
+                            "name": f"IntuiTek¹ {product['name']} ({tier_info['name']})",
+                        },
+                    },
+                    "quantity": 1,
+                }],
+                success_url="https://intuitek.ai/success",
+                cancel_url="https://intuitek.ai/pricing",
+                metadata={
+                    "product_id": product_id,
+                    "tier": tier_info["name"],
+                    "payment_method": payment_method,
+                },
+            )
+            return {
+                "status": "payment_required",
+                "product_id": product_id,
+                "tier": tier_info["name"],
+                "price_usd": tier_info["price_usd"],
+                "period": tier_info.get("period", "month"),
+                "checkout_url": session.url,
+                "session_id": session.id,
+                "instructions": "Direct user to checkout_url to complete subscription.",
+            }
+        except Exception as exc:
+            return {
+                "status": "error",
+                "error": f"Checkout creation failed: {exc}",
+                "contact": "agent@intuitek.ai",
+            }
 
     def _get_pricing(self, args: Dict) -> Dict:
         product_id = args.get("product_id")

@@ -6,6 +6,7 @@ Spec: https://x402.org
 """
 import json
 import logging
+import os
 from typing import Optional
 
 from fastapi import Request, Response
@@ -13,6 +14,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 log = logging.getLogger("ace.x402")
+
+PAY_TO_ADDRESS = os.environ.get(
+    "X402_PAY_TO", "0xf615BDa54D576e757B51A6128aC8A7C67a1C3d6C"
+)
 
 X402_PAYMENT_REQUIREMENTS = {
     "x402Version": 1,
@@ -24,7 +29,7 @@ X402_PAYMENT_REQUIREMENTS = {
             "resource": "https://api.intuitek.ai/v1/",
             "description": "IntuiTek\u00b9 API access",
             "mimeType": "application/json",
-            "payTo": "WALLET_ADDRESS_PLACEHOLDER",
+            "payTo": PAY_TO_ADDRESS,
             "maxTimeoutSeconds": 300,
             "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
             "extra": {"name": "USDC", "version": "1"},

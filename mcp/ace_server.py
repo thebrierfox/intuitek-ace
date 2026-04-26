@@ -6,8 +6,19 @@ import json
 import os
 from typing import Any, Dict
 
-import stripe
+import stripe as _stripe
 from mcp.server import MCPServer
+
+_stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "sk_test_dev")
+
+PAY_TO_ADDRESS = "0xf615BDa54D576e757B51A6128aC8A7C67a1C3d6C"
+USDC_BASE_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+
+_CHECKOUT_PRICE_MAP = {
+    "yield-intelligence-pro": {"starter": 2900, "professional": 9900, "enterprise": 49900},
+    "ace-autonomous-commerce": {"starter": 3900, "professional": 14900},
+    "counselor-ai-strategy": {"starter": 4900, "professional": 19900},
+}
 
 ACE_TOOLS = [
     {
@@ -159,6 +170,7 @@ class AceMCPServer(MCPServer):
         product_id = args.get("product_id")
         payment_method = args.get("payment_method")
         limit = args.get("spending_limit_usd")
+        tier = args.get("tier", "starter")
 
         product = next(
             (p for p in PRICING_DATA["products"] if p["id"] == product_id), None
@@ -173,16 +185,17 @@ class AceMCPServer(MCPServer):
         per_request = next(
             (m for m in product["pricing_models"] if m["type"] == "per_request"), None
         )
-        price = per_request["price_usd"] if per_request else None
+        per_call_price = per_request["price_usd"] if per_request else 0.05
 
-        if limit and price and price > limit:
+        if limit and per_call_price and per_call_price > limit:
             return {
                 "status": "rejected",
-                "reason": f"Price ${price} exceeds spending limit ${limit}",
+                "reason": f"Per-call price ${per_call_price} exceeds spending limit ${limit}",
                 "product_id": product_id,
             }
 
         if payment_method == "x402":
+<<<<<<< HEAD
             from middleware.x402 import X402_PAYMENT_REQUIREMENTS, PAY_TO_ADDRESS
             return {
                 "status": "payment_required",
@@ -236,10 +249,76 @@ class AceMCPServer(MCPServer):
                 metadata={
                     "product_id": product_id,
                     "tier": tier_info["name"],
+=======
+            usdc_micro = str(int(per_call_price * 1_000_000))
+            return {
+                "status": "payment_required",
+                "payment_method": "x402",
+                "product_id": product_id,
+                "per_call_price_usd": per_call_price,
+                "payment_requirements": {
+                    "x402Version": 1,
+                    "accepts": [
+                        {
+                            "scheme": "exact",
+                            "network": "base",
+                            "maxAmountRequired": usdc_micro,
+                            "resource": "https://api.intuitek.ai/v1/",
+                            "description": f"IntuiTek¹ {product['name']} — per-call",
+                            "mimeType": "application/json",
+                            "payTo": PAY_TO_ADDRESS,
+                            "maxTimeoutSeconds": 300,
+                            "asset": USDC_BASE_ASSET,
+                            "extra": {"name": "USDC", "version": "1"},
+                        }
+                    ],
+                },
+                "instructions": (
+                    "Send USDC payment proof on Base in the x-payment header, "
+                    "then re-invoke this tool to complete the purchase."
+                ),
+            }
+
+        # ACP / Stripe subscription checkout
+        tier_prices = _CHECKOUT_PRICE_MAP.get(product_id, {})
+        amount_cents = tier_prices.get(tier, tier_prices.get("starter", 3900))
+        monthly_usd = amount_cents / 100
+
+        if limit and monthly_usd > limit:
+            return {
+                "status": "rejected",
+                "reason": f"Subscription price ${monthly_usd}/mo exceeds spending limit ${limit}",
+                "product_id": product_id,
+                "tier": tier,
+            }
+
+        try:
+            session = _stripe.checkout.Session.create(
+                mode="subscription",
+                line_items=[
+                    {
+                        "price_data": {
+                            "currency": "usd",
+                            "unit_amount": amount_cents,
+                            "recurring": {"interval": "month"},
+                            "product_data": {
+                                "name": f"IntuiTek¹ {product['name']} ({tier})",
+                            },
+                        },
+                        "quantity": 1,
+                    }
+                ],
+                success_url="https://intuitek.ai/success",
+                cancel_url="https://intuitek.ai/",
+                metadata={
+                    "product_id": product_id,
+                    "tier": tier,
+>>>>>>> b6a36c5 (A2+A3: Wire real PAY_TO address, replace purchase execution stub)
                     "payment_method": payment_method,
                 },
             )
             return {
+<<<<<<< HEAD
                 "status": "payment_required",
                 "product_id": product_id,
                 "tier": tier_info["name"],
@@ -248,12 +327,31 @@ class AceMCPServer(MCPServer):
                 "checkout_url": session.url,
                 "session_id": session.id,
                 "instructions": "Direct user to checkout_url to complete subscription.",
+=======
+                "status": "checkout_created",
+                "product_id": product_id,
+                "tier": tier,
+                "payment_method": payment_method,
+                "monthly_price_usd": monthly_usd,
+                "checkout_url": session.url,
+                "checkout_id": session.id,
+                "instructions": (
+                    "Complete payment at checkout_url to activate subscription. "
+                    "License delivered by email within 5 minutes of payment."
+                ),
+>>>>>>> b6a36c5 (A2+A3: Wire real PAY_TO address, replace purchase execution stub)
             }
         except Exception as exc:
             return {
                 "status": "error",
+<<<<<<< HEAD
                 "error": f"Checkout creation failed: {exc}",
                 "contact": "agent@intuitek.ai",
+=======
+                "error": str(exc),
+                "product_id": product_id,
+                "fallback": "https://api.intuitek.ai/checkouts",
+>>>>>>> b6a36c5 (A2+A3: Wire real PAY_TO address, replace purchase execution stub)
             }
 
     def _get_pricing(self, args: Dict) -> Dict:

@@ -28,24 +28,43 @@ CDP_FACILITATOR_URL = os.environ.get(
 PAY_TO_ADDRESS = os.environ.get(
     "X402_PAY_TO", "0xf615BDa54D576e757B51A6128aC8A7C67a1C3d6C"
 )
+USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
-X402_PAYMENT_REQUIREMENTS = {
-    "x402Version": 1,
-    "accepts": [
-        {
-            "scheme": "exact",
-            "network": "base",
-            "maxAmountRequired": "5000000",
-            "resource": "https://api.intuitek.ai/v1/",
-            "description": "IntuiTek¹ API access",
-            "mimeType": "application/json",
-            "payTo": PAY_TO_ADDRESS,
-            "maxTimeoutSeconds": 300,
-            "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-            "extra": {"name": "USDC", "version": "1"},
-        }
-    ],
+# Per-route x402 prices in USDC micro-units (1 USDC = 1,000,000)
+_ROUTE_PRICES = {
+    "/v1/yield": ("2000000", "YIELD INTELLIGENCE Pro — per-call"),
+    "/v1/ace": ("1000000", "ACE Autonomous Commerce — per-call"),
+    "/v1/counselor": ("10000000", "COUNSELOR AI Strategy — per-call"),
 }
+_DEFAULT_PRICE = ("2000000", "IntuiTek¹ API access")
+
+
+def _payment_requirements_for_path(path: str) -> dict:
+    amount, description = _DEFAULT_PRICE
+    for prefix, (amt, desc) in _ROUTE_PRICES.items():
+        if path.startswith(prefix):
+            amount, description = amt, desc
+            break
+    return {
+        "x402Version": 1,
+        "accepts": [
+            {
+                "scheme": "exact",
+                "network": "base",
+                "maxAmountRequired": amount,
+                "resource": f"https://api.intuitek.ai{path}",
+                "description": description,
+                "mimeType": "application/json",
+                "payTo": PAY_TO_ADDRESS,
+                "maxTimeoutSeconds": 300,
+                "asset": USDC_BASE,
+                "extra": {"name": "USDC", "version": "1"},
+            }
+        ],
+    }
+
+
+X402_PAYMENT_REQUIREMENTS = _payment_requirements_for_path("/v1/")
 
 
 def _build_cdp_jwt(key_id: str, key_secret_b64: str, endpoint_url: str) -> str:
@@ -109,15 +128,16 @@ def _extract_payment_token(request: Request) -> Optional[str]:
     return request.headers.get("x-payment")
 
 
-def _payment_required_response() -> JSONResponse:
+def _payment_required_response(path: str) -> JSONResponse:
+    reqs = _payment_requirements_for_path(path)
     return JSONResponse(
         status_code=402,
         content={
             "error": "Payment required",
             "x402Version": 1,
-            "paymentRequirements": X402_PAYMENT_REQUIREMENTS,
+            "paymentRequirements": reqs,
         },
-        headers={"x-payment-requirements": json.dumps(X402_PAYMENT_REQUIREMENTS)},
+        headers={"x-payment-requirements": json.dumps(reqs)},
     )
 
 
@@ -126,45 +146,48 @@ class X402Middleware(BaseHTTPMiddleware):
         if not _is_v1_route(request.url.path):
             return await call_next(request)
 
+        path = request.url.path
+        reqs = _payment_requirements_for_path(path)
+
         payment_token = _extract_payment_token(request)
         if not payment_token:
-            log.info("x402: no payment header for %s", request.url.path)
-            return _payment_required_response()
+            log.info("x402: no payment header for %s", path)
+            return _payment_required_response(path)
 
         # Step 1: Verify EIP-3009 signature via CDP facilitator
-        verify = await _cdp_request("verify", payment_token, X402_PAYMENT_REQUIREMENTS)
+        verify = await _cdp_request("verify", payment_token, reqs)
         if not verify or not verify.get("isValid"):
             reason = (verify or {}).get("invalidReason", "unverified")
-            log.info("x402: payment invalid for %s — %s", request.url.path, reason)
+            log.info("x402: payment invalid for %s — %s", path, reason)
             return JSONResponse(
                 status_code=402,
                 content={
                     "error": "Payment invalid",
                     "x402Version": 1,
                     "invalidReason": reason,
-                    "paymentRequirements": X402_PAYMENT_REQUIREMENTS,
+                    "paymentRequirements": reqs,
                 },
-                headers={"x-payment-requirements": json.dumps(X402_PAYMENT_REQUIREMENTS)},
+                headers={"x-payment-requirements": json.dumps(reqs)},
             )
 
         # Step 2: Settle on-chain via CDP (produces cryptographic event that triggers Bazaar indexing)
-        settle = await _cdp_request("settle", payment_token, X402_PAYMENT_REQUIREMENTS)
+        settle = await _cdp_request("settle", payment_token, reqs)
         if not settle or not settle.get("success"):
-            log.error("x402: CDP settle failed for %s", request.url.path)
+            log.error("x402: CDP settle failed for %s", path)
             return JSONResponse(
                 status_code=402,
                 content={
                     "error": "Payment settlement failed",
                     "x402Version": 1,
-                    "paymentRequirements": X402_PAYMENT_REQUIREMENTS,
+                    "paymentRequirements": reqs,
                 },
-                headers={"x-payment-requirements": json.dumps(X402_PAYMENT_REQUIREMENTS)},
+                headers={"x-payment-requirements": json.dumps(reqs)},
             )
 
         # Verified and settled — forward request
         log.info(
             "x402: payment settled via CDP for %s, txHash=%s",
-            request.url.path,
+            path,
             settle.get("txHash"),
         )
         response = await call_next(request)

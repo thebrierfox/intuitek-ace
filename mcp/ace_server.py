@@ -85,9 +85,9 @@ PRICING_DATA = {
         {
             "id": "yield-intelligence-pro",
             "name": "YIELD INTELLIGENCE Pro",
-            "description": "Full yield analysis and portfolio optimization for generating passive income",
+            "description": "Passive Income Terminal — high-yield dividend stock analysis, portfolio optimization, and AI analyst for income-focused investors. Per-call analysis returns ranked yield opportunities, risk-adjusted dividend metrics, and portfolio rebalancing signals.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 2.00, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": 1.00, "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -106,9 +106,9 @@ PRICING_DATA = {
         {
             "id": "ace-autonomous-commerce",
             "name": "ACE Autonomous Commerce Engine",
-            "description": "Autonomous purchase execution and license provisioning",
+            "description": "Agent commerce infrastructure — executes complete autonomous purchase transactions with license provisioning. Per-call invocation handles payment routing (x402, Stripe, ACP), license issuance, and product registration. Stripe-integrated, Railway-deployed.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 1.00, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": 2.00, "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -124,10 +124,10 @@ PRICING_DATA = {
         },
         {
             "id": "counselor-ai-strategy",
-            "name": "COUNSELOR AI Strategy",
-            "description": "Expert AI infrastructure guidance and agent architecture consulting",
+            "name": "COUNSELOR Legal Reasoning Engine",
+            "description": "Six-agent sealed legal reasoning pipeline with Bayesian calibration and FTS5 case-law search. Per-query analysis returns case research, statute/regulation lookup, and document drafting with confidence scoring. Integrates with Microsoft 365 (email, calendar, document drafting) and Clio practice management. Production v6.0.0.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 10.00, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": 15.00, "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",

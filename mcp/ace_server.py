@@ -87,7 +87,7 @@ PRICING_DATA = {
             "name": "YIELD INTELLIGENCE Pro",
             "description": "Full yield analysis and portfolio optimization for generating passive income",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 0.05, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": 2.00, "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -108,7 +108,7 @@ PRICING_DATA = {
             "name": "ACE Autonomous Commerce Engine",
             "description": "Autonomous purchase execution and license provisioning",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 0.05, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": 1.00, "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -127,7 +127,7 @@ PRICING_DATA = {
             "name": "COUNSELOR AI Strategy",
             "description": "Expert AI infrastructure guidance and agent architecture consulting",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 0.10, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": 10.00, "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",

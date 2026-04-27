@@ -3,6 +3,7 @@ uvicorn[standard]>=0.24.0
 pydantic[email]>=2.0.0
 httpx>=0.25.0
 cryptography>=41.0.0
+PyJWT[cryptography]>=2.8.0
 stripe>=5.4.0
 slowapi>=0.1.8
 mcp>=1.0.0

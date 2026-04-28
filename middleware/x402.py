@@ -101,6 +101,40 @@ def _build_cdp_jwt(key_id: str, key_secret_b64: str, endpoint_url: str) -> str:
     return pyjwt.encode(payload, pem, algorithm="EdDSA", headers=headers)
 
 
+def _normalize_requirements_for_cdp(requirements: dict) -> dict:
+    """
+    Transform x402 protocol payment requirements to CDP facilitator's V1 schema.
+    CDP V1PaymentRequirements: flat object with x402Version, scheme, maxAmountRequired, maxTimeoutSeconds.
+    Input may have a nested 'accepts' array (standard x402 response format).
+    """
+    accepts = requirements.get("accepts", [])
+    if accepts:
+        flat = dict(accepts[0])
+    else:
+        flat = dict(requirements)
+    flat.setdefault("x402Version", 1)
+    return flat
+
+
+def _decode_payment_payload(payment_token: str) -> object:
+    """
+    CDP expects paymentPayload as a JSON object (V1PaymentPayload).
+    x-payment header arrives as base64url-encoded JSON from x402 clients.
+    Falls back to raw JSON string parse; returns token as-is on failure.
+    """
+    import json as _json
+    try:
+        decoded = base64.urlsafe_b64decode(payment_token + "==")
+        return _json.loads(decoded)
+    except Exception:
+        pass
+    try:
+        return _json.loads(payment_token)
+    except Exception:
+        pass
+    return payment_token
+
+
 async def _cdp_request(path: str, payment_token: str, requirements: dict) -> Optional[dict]:
     """
     POST to a CDP facilitator endpoint (verify or settle).
@@ -114,12 +148,21 @@ async def _cdp_request(path: str, payment_token: str, requirements: dict) -> Opt
         return None
 
     url = f"{CDP_FACILITATOR_URL}/{path}"
+    cdp_requirements = _normalize_requirements_for_cdp(requirements)
+    cdp_payload = _decode_payment_payload(payment_token)
+
+    body = {
+        "x402Version": 1,
+        "paymentPayload": cdp_payload,
+        "paymentRequirements": cdp_requirements,
+    }
+
     try:
         token = _build_cdp_jwt(key_id, key_secret, url)
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
                 url,
-                json={"paymentHeader": payment_token, "paymentRequirements": requirements},
+                json=body,
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             )
         if resp.status_code == 200:

@@ -1,7 +1,7 @@
 {
-  "_comment": "Canonical pricing source — all surfaces read from here. yield=$1, ace=$2, counselor=$15 USDC per x402 call.",
+  "_comment": "Canonical pricing source — all surfaces read from here. yield=$1, ace=$2, counselor=$15 USDC per x402 call. pay_to rotated 2026-04-28 to dedicated x402-revenue address (keypair at credentials/keys/aegis-x402-revenue.json).",
   "x402": {
-    "pay_to": "0x081f545A538704E6Af416f63E8fF6CdF98818e71",
+    "pay_to": "0x03d773c52B67993e60Ecb3134b17436fE03B584c",
     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "network": "base",
     "routes": {

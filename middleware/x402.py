@@ -77,12 +77,17 @@ def _build_cdp_jwt(key_id: str, key_secret_b64: str, endpoint_url: str) -> str:
     """
     Build a CDP API JWT for authenticating requests to the CDP facilitator.
     CDP API key secret is a 64-byte value: 32-byte Ed25519 seed + 32-byte public key.
-    JWT URI claim format: "POST <full_url>" per CDP Platform API spec.
+    JWT URI claim format: "METHOD hostname/path" — no scheme prefix (verified 2026-04-28).
     """
     raw_key = base64.b64decode(key_secret_b64)
     # First 32 bytes are the Ed25519 private key seed
     private_key = Ed25519PrivateKey.from_private_bytes(raw_key[:32])
     pem = private_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+
+    # Strip scheme: "https://api.cdp.coinbase.com/path" → "api.cdp.coinbase.com/path"
+    from urllib.parse import urlparse
+    parsed = urlparse(endpoint_url)
+    uri_no_scheme = f"{parsed.netloc}{parsed.path}"
 
     now = int(time.time())
     payload = {
@@ -90,7 +95,7 @@ def _build_cdp_jwt(key_id: str, key_secret_b64: str, endpoint_url: str) -> str:
         "iss": "cdp",
         "nbf": now,
         "exp": now + 120,
-        "uris": [f"POST {endpoint_url}"],
+        "uris": [f"POST {uri_no_scheme}"],
     }
     headers = {"kid": key_id, "nonce": secrets.token_hex(16)}
     return pyjwt.encode(payload, pem, algorithm="EdDSA", headers=headers)

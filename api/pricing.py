@@ -1,19 +1,30 @@
 """
 GET /pricing — Machine-readable pricing for all IntuiTek¹ products.
+Prices sourced from config/pricing.json — single canonical truth.
 """
-from fastapi import APIRouter
+import json
+import pathlib
+
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 pricing_router = APIRouter()
+
+_PRICING_PATH = pathlib.Path(__file__).parent.parent / "config" / "pricing.json"
+with open(_PRICING_PATH) as _f:
+    _CANONICAL = json.load(_f)
+
+# Build price lookup: product_id → x402_price_usd
+_PRICE_BY_ID = {p["id"]: p["x402_price_usd"] for p in _CANONICAL["products"]}
 
 PRICING = {
     "products": [
         {
             "id": "yield-intelligence-pro",
             "name": "YIELD INTELLIGENCE Pro",
-            "description": "Full yield analysis and portfolio optimization for generating passive income",
+            "description": "Passive Income Terminal — high-yield dividend stock analysis, portfolio optimization, and AI analyst for income-focused investors.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 0.05, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["yield-intelligence-pro"], "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -32,9 +43,9 @@ PRICING = {
         {
             "id": "ace-autonomous-commerce",
             "name": "ACE Autonomous Commerce Engine",
-            "description": "Autonomous purchase execution and license provisioning",
+            "description": "Autonomous purchase execution and license provisioning.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 0.05, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["ace-autonomous-commerce"], "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -50,10 +61,10 @@ PRICING = {
         },
         {
             "id": "counselor-ai-strategy",
-            "name": "COUNSELOR AI Strategy",
-            "description": "Expert AI infrastructure guidance and agent architecture consulting",
+            "name": "COUNSELOR Legal Reasoning Engine",
+            "description": "Six-agent sealed legal reasoning pipeline with Bayesian calibration and FTS5 case-law search.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 0.10, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["counselor-ai-strategy"], "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -79,14 +90,13 @@ PRICING = {
 @pricing_router.get("")
 @pricing_router.get("/")
 async def get_pricing():
-    """Machine-readable pricing for all IntuiTek\u00b9 products and services."""
+    """Machine-readable pricing for all IntuiTek¹ products and services."""
     return JSONResponse(content=PRICING)
 
 
 @pricing_router.get("/{product_id}")
 async def get_pricing_by_product(product_id: str):
     """Return pricing for a specific product by ID."""
-    from fastapi import HTTPException
     product = next((p for p in PRICING["products"] if p["id"] == product_id), None)
     if not product:
         raise HTTPException(

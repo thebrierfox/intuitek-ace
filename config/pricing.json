@@ -1,0 +1,34 @@
+{
+  "_comment": "Canonical pricing source — all surfaces read from here. yield=$1, ace=$2, counselor=$15 USDC per x402 call.",
+  "x402": {
+    "pay_to": "0x081f545A538704E6Af416f63E8fF6CdF98818e71",
+    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "network": "base",
+    "routes": {
+      "/v1/yield":     { "amount_usd": 1.00,  "amount_micro": "1000000",  "description": "YIELD INTELLIGENCE Pro — per-call" },
+      "/v1/ace":       { "amount_usd": 2.00,  "amount_micro": "2000000",  "description": "ACE Autonomous Commerce — per-call" },
+      "/v1/counselor": { "amount_usd": 15.00, "amount_micro": "15000000", "description": "COUNSELOR Legal Reasoning — per-call" }
+    },
+    "default": { "amount_usd": 1.00, "amount_micro": "1000000", "description": "IntuiTek¹ API access" }
+  },
+  "products": [
+    {
+      "id": "yield-intelligence-pro",
+      "name": "YIELD INTELLIGENCE Pro",
+      "x402_price_usd": 1.00,
+      "route": "/v1/yield"
+    },
+    {
+      "id": "ace-autonomous-commerce",
+      "name": "ACE Autonomous Commerce Engine",
+      "x402_price_usd": 2.00,
+      "route": "/v1/ace"
+    },
+    {
+      "id": "counselor-ai-strategy",
+      "name": "COUNSELOR Legal Reasoning Engine",
+      "x402_price_usd": 15.00,
+      "route": "/v1/counselor"
+    }
+  ]
+}

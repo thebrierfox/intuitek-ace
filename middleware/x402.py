@@ -8,6 +8,7 @@ import base64
 import json
 import logging
 import os
+import pathlib
 import secrets
 import time
 from typing import Optional
@@ -22,21 +23,26 @@ from starlette.responses import JSONResponse
 
 log = logging.getLogger("ace.x402")
 
+# Load canonical pricing from config/pricing.json (one directory up from middleware/)
+_PRICING_PATH = pathlib.Path(__file__).parent.parent / "config" / "pricing.json"
+with open(_PRICING_PATH) as _f:
+    _PRICING = json.load(_f)
+
 CDP_FACILITATOR_URL = os.environ.get(
     "CDP_FACILITATOR_URL", "https://api.cdp.coinbase.com/platform/v2/x402"
 )
-PAY_TO_ADDRESS = os.environ.get(
-    "X402_PAY_TO", "0xf615BDa54D576e757B51A6128aC8A7C67a1C3d6C"
-)
-USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+PAY_TO_ADDRESS = os.environ.get("X402_PAY_TO", _PRICING["x402"]["pay_to"])
+USDC_BASE = _PRICING["x402"]["asset"]
 
-# Per-route x402 prices in USDC micro-units (1 USDC = 1,000,000)
+# Per-route x402 prices loaded from canonical pricing.json
 _ROUTE_PRICES = {
-    "/v1/yield": ("2000000", "YIELD INTELLIGENCE Pro — per-call"),
-    "/v1/ace": ("1000000", "ACE Autonomous Commerce — per-call"),
-    "/v1/counselor": ("10000000", "COUNSELOR AI Strategy — per-call"),
+    route: (cfg["amount_micro"], cfg["description"])
+    for route, cfg in _PRICING["x402"]["routes"].items()
 }
-_DEFAULT_PRICE = ("2000000", "IntuiTek¹ API access")
+_DEFAULT_PRICE = (
+    _PRICING["x402"]["default"]["amount_micro"],
+    _PRICING["x402"]["default"]["description"],
+)
 
 
 def _payment_requirements_for_path(path: str) -> dict:

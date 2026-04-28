@@ -4,6 +4,7 @@ Tools: execute_autonomous_purchase, get_pricing
 """
 import json
 import os
+import pathlib
 from typing import Any, Dict
 
 import stripe as _stripe
@@ -11,8 +12,13 @@ from mcp.server import MCPServer
 
 _stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "sk_test_dev")
 
-PAY_TO_ADDRESS = "0xf615BDa54D576e757B51A6128aC8A7C67a1C3d6C"
-USDC_BASE_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+# Canonical pricing source
+_PRICING_PATH = pathlib.Path(__file__).parent.parent / "config" / "pricing.json"
+with open(_PRICING_PATH) as _f:
+    _CANONICAL = json.load(_f)
+
+PAY_TO_ADDRESS = os.environ.get("X402_PAY_TO", _CANONICAL["x402"]["pay_to"])
+USDC_BASE_ASSET = _CANONICAL["x402"]["asset"]
 
 _CHECKOUT_PRICE_MAP = {
     "yield-intelligence-pro": {"starter": 2900, "professional": 9900, "enterprise": 49900},
@@ -80,6 +86,8 @@ ACE_TOOLS = [
     },
 ]
 
+_PRICE_BY_ID = {p["id"]: p["x402_price_usd"] for p in _CANONICAL["products"]}
+
 PRICING_DATA = {
     "products": [
         {
@@ -87,7 +95,7 @@ PRICING_DATA = {
             "name": "YIELD INTELLIGENCE Pro",
             "description": "Passive Income Terminal — high-yield dividend stock analysis, portfolio optimization, and AI analyst for income-focused investors. Per-call analysis returns ranked yield opportunities, risk-adjusted dividend metrics, and portfolio rebalancing signals.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 1.00, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["yield-intelligence-pro"], "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -108,7 +116,7 @@ PRICING_DATA = {
             "name": "ACE Autonomous Commerce Engine",
             "description": "Agent commerce infrastructure — executes complete autonomous purchase transactions with license provisioning. Per-call invocation handles payment routing (x402, Stripe, ACP), license issuance, and product registration. Stripe-integrated, Railway-deployed.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 2.00, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["ace-autonomous-commerce"], "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",
@@ -127,7 +135,7 @@ PRICING_DATA = {
             "name": "COUNSELOR Legal Reasoning Engine",
             "description": "Six-agent sealed legal reasoning pipeline with Bayesian calibration and FTS5 case-law search. Per-query analysis returns case research, statute/regulation lookup, and document drafting with confidence scoring. Integrates with Microsoft 365 (email, calendar, document drafting) and Clio practice management. Production v6.0.0.",
             "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": 15.00, "unit": "tool_call"},
+                {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["counselor-ai-strategy"], "unit": "tool_call"},
                 {
                     "type": "subscription",
                     "protocol": "acp",

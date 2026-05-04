@@ -151,9 +151,9 @@ PRICING_DATA = {
         },
     ],
     "mcp_servers": [
-        {"product": "yield-intelligence", "url": "https://ace-license-server-production.up.railway.app/mcp/yield", "transport": "streamable-http"},
-        {"product": "ace", "url": "https://ace-license-server-production.up.railway.app/mcp/ace", "transport": "streamable-http"},
-        {"product": "counselor", "url": "https://ace-license-server-production.up.railway.app/mcp/counselor", "transport": "streamable-http"},
+        {"product": "yield-intelligence", "url": "https://mcp.intuitek.ai/yield", "transport": "streamable-http"},
+        {"product": "ace", "url": "https://mcp.intuitek.ai/ace", "transport": "streamable-http"},
+        {"product": "counselor", "url": "https://mcp.intuitek.ai/counselor", "transport": "streamable-http"},
     ],
 }
 

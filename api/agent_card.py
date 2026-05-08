@@ -60,7 +60,7 @@ AGENT_CARD = {
             ],
             "inputModes": ["text", "application/json"],
             "outputModes": ["application/json"],
-            "mcpServer": "https://mcp.intuitek.ai/yield",
+            "mcpServer": "https://api.intuitek.ai/yield",
             "pricing": {
                 "perCall": {"protocol": "x402", "price_usd": _PRICE_BY_ID["yield-intelligence-pro"], "payTo": _PAY_TO},
                 "subscription": {"protocol": "acp", "checkout_url": "https://api.intuitek.ai/checkouts"},
@@ -80,7 +80,7 @@ AGENT_CARD = {
             ],
             "inputModes": ["text", "application/json"],
             "outputModes": ["application/json"],
-            "mcpServer": "https://mcp.intuitek.ai/ace",
+            "mcpServer": "https://api.intuitek.ai/ace",
             "pricing": {
                 "perCall": {"protocol": "x402", "price_usd": _PRICE_BY_ID["ace-autonomous-commerce"], "payTo": _PAY_TO},
                 "subscription": {"protocol": "acp", "checkout_url": "https://api.intuitek.ai/checkouts"},
@@ -100,7 +100,7 @@ AGENT_CARD = {
             ],
             "inputModes": ["text", "application/json"],
             "outputModes": ["application/json"],
-            "mcpServer": "https://mcp.intuitek.ai/counselor",
+            "mcpServer": "https://api.intuitek.ai/counselor",
             "pricing": {
                 "perCall": {"protocol": "x402", "price_usd": _PRICE_BY_ID["counselor-ai-strategy"], "payTo": _PAY_TO},
                 "subscription": {"protocol": "acp", "checkout_url": "https://api.intuitek.ai/checkouts"},

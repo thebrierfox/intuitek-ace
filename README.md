@@ -33,9 +33,9 @@ https://api.intuitek.ai/.well-known/agent-card.json
 Streamable HTTP, spec 2025-11-25. Mount in any MCP client:
 
 ```
-https://mcp.intuitek.ai/yield      # YIELD INTELLIGENCE
-https://mcp.intuitek.ai/ace        # ACE Autonomous Commerce
-https://mcp.intuitek.ai/counselor  # COUNSELOR AI Strategy
+https://api.intuitek.ai/yield      # YIELD INTELLIGENCE
+https://api.intuitek.ai/ace        # ACE Autonomous Commerce
+https://api.intuitek.ai/counselor  # COUNSELOR AI Strategy
 ```
 
 ### Machine-readable pricing
@@ -80,7 +80,7 @@ curl https://ace-license-server-production.up.railway.app/health
 curl https://api.intuitek.ai/pricing
 
 # Call a tool (trial — no payment needed for first 50 calls)
-curl -X POST https://mcp.intuitek.ai/yield/mcp \
+curl -X POST https://api.intuitek.ai/yield/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",

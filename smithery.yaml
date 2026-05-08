@@ -1,0 +1,57 @@
+# Smithery configuration — https://smithery.ai/docs/build/project-config/smithery.yaml
+
+name: "io.github.thebrierfox/intuitek-ace"
+version: "1.0.0"
+description: "Yield Intelligence MCP server — passive income opportunity analysis and portfolio optimization. Analyze yield opportunities across asset classes (dividend ETFs, REITs, preferred stocks) and optimize portfolios for a target monthly income. No auth required for hosted endpoint."
+author:
+  name: "W. Kyle Million"
+  url: "https://github.com/thebrierfox"
+license: "MIT"
+keywords: [yield, finance, passive-income, portfolio, investing, dividend, mcp-server]
+
+build:
+  dockerfile: Dockerfile
+  dockerBuildPath: "."
+
+startCommand:
+  type: http
+
+  configSchema:
+    type: object
+    properties:
+      FERNET_KEY:
+        type: string
+        title: "Fernet Key"
+        description: "Required for self-hosted mode. Generate with: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+      STRIPE_SECRET_KEY:
+        type: string
+        title: "Stripe Secret Key"
+        description: "Required for self-hosted payment processing. Leave empty to use read-only yield analysis only."
+      STRIPE_WEBHOOK_SECRET:
+        type: string
+        title: "Stripe Webhook Secret"
+        description: "Stripe webhook signing secret for self-hosted mode."
+      RESEND_API_KEY:
+        type: string
+        title: "Resend API Key"
+        description: "Required for license delivery emails in self-hosted mode."
+    required: []
+
+  commandFunction: |-
+    (config) => ({
+      command: "python3",
+      args: ["-m", "uvicorn", "ace_server:app", "--host", "0.0.0.0", "--port", "8000"],
+      env: {
+        PORT: "8000",
+        FERNET_KEY: config.FERNET_KEY || "",
+        STRIPE_SECRET_KEY: config.STRIPE_SECRET_KEY || "",
+        STRIPE_WEBHOOK_SECRET: config.STRIPE_WEBHOOK_SECRET || "",
+        RESEND_API_KEY: config.RESEND_API_KEY || ""
+      }
+    })
+
+exampleConfig:
+  FERNET_KEY: ""
+  STRIPE_SECRET_KEY: ""
+  STRIPE_WEBHOOK_SECRET: ""
+  RESEND_API_KEY: ""

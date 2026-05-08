@@ -1,5 +1,5 @@
 """
-A2A Agent Card — published at /.well-known/agent-card.json
+A2A Agent Card — published at /.well-known/agent-card.json and /.well-known/agent.json
 Spec: https://google.github.io/A2A
 """
 import json
@@ -114,8 +114,9 @@ AGENT_CARD = {
 
 
 @agent_card_router.get("/.well-known/agent-card.json")
+@agent_card_router.get("/.well-known/agent.json")
 async def get_agent_card():
-    """A2A Agent Card — advertises IntuiTek¹ ACE capabilities to the agent network."""
+    """A2A Agent Card — both the legacy path and the Google A2A spec canonical path."""
     return JSONResponse(
         content=AGENT_CARD,
         headers={"Cache-Control": "public, max-age=3600"},

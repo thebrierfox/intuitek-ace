@@ -7,7 +7,7 @@
     "routes": {
       "/v1/yield":     { "amount_usd": 1.00,  "amount_micro": "1000000",  "description": "YIELD INTELLIGENCE Pro — per-call" },
       "/v1/ace":       { "amount_usd": 2.00,  "amount_micro": "2000000",  "description": "ACE Autonomous Commerce — per-call" },
-      "/v1/counselor": { "amount_usd": 15.00, "amount_micro": "15000000", "description": "COUNSELOR Legal Reasoning — per-call" }
+      "/v1/counselor": { "amount_usd": 15.00, "amount_micro": "15000000", "description": "COUNSELOR AI Strategy Advisor — per-call" }
     },
     "default": { "amount_usd": 1.00, "amount_micro": "1000000", "description": "IntuiTek¹ API access" }
   },
@@ -26,7 +26,7 @@
     },
     {
       "id": "counselor-ai-strategy",
-      "name": "COUNSELOR Legal Reasoning Engine",
+      "name": "COUNSELOR AI Strategy Advisor",
       "x402_price_usd": 15.00,
       "route": "/v1/counselor"
     }

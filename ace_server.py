@@ -290,8 +290,37 @@ def migrate_schema():
 
 
 # ── LIFESPAN ─────────────────────────────────────────────────
+_KNOWN_BAD_FERNET = b"Drmhze6EPcv0fN_81Bj-nA=="
+
+_REQUIRED_ENV: list[tuple[str, str, str]] = [
+    ("FERNET_KEY",            "Drmhze6EPcv0fN_81Bj-nA==", "Generate: python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""),
+    ("STRIPE_SECRET_KEY",     "sk_test_dev",               "Must start with sk_live_ for production"),
+    ("STRIPE_WEBHOOK_SECRET", "whsec_dev",                 "Set from Stripe Dashboard > Webhooks > Signing secret"),
+    ("RESEND_API_KEY",        "dev_token",                 "Set to live Resend API key"),
+]
+
+
+def _validate_production_credentials() -> None:
+    errors: list[str] = []
+    for var, bad_default, hint in _REQUIRED_ENV:
+        val = os.environ.get(var, bad_default)
+        if not val or val == bad_default:
+            errors.append(f"{var} is not configured for production. {hint}")
+    if FERNET_KEY == _KNOWN_BAD_FERNET:
+        errors.append(
+            "FERNET_KEY is the public git-history fallback — all ciphertext is trivially decryptable. "
+            "Generate a fresh key and set it in Railway Variables."
+        )
+    if errors:
+        for e in errors:
+            log.critical("[ACE] STARTUP BLOCKED — %s", e)
+        raise RuntimeError("Production credential check failed:\n" + "\n".join(errors))
+    log.info("[ACE] Credential validation passed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _validate_production_credentials()
     init_db()
     migrate_schema()
     yield
@@ -705,6 +734,16 @@ async def _provision_customer(customer_data: dict):
                 "INSERT INTO provision_log (customer_id, step, status, detail) VALUES (?, 'provision_error', 'error', ?)",
                 (customer_data["id"], str(exc)),
             )
+            conn.execute(
+                "UPDATE customers SET status = 'provision_failed' WHERE id = ?",
+                (customer_data["id"],),
+            )
+        import subprocess
+        subprocess.run(
+            ["bash", "/home/aegis/intuitek/notify.sh",
+             f"⚠️ ACE ALERT: provisioning failed for customer {customer_data['id']}: {exc}"],
+            check=False,
+        )
 
 
 # ══════════════════════════════════════════════════════════════

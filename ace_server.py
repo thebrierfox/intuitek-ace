@@ -805,9 +805,14 @@ from api.agent_card import agent_card_router
 from middleware.x402 import X402Middleware
 
 # MCP Streamable HTTP servers
+# Free discovery paths — no x402 (Glama/Smithery connector listing, introspection)
 app.mount("/yield", yield_mcp_app)
 app.mount("/ace", ace_mcp_app)
 app.mount("/counselor", counselor_mcp_app)
+# x402-gated paid paths — same apps, protected by X402Middleware below
+app.mount("/v1/yield", yield_mcp_app)
+app.mount("/v1/ace", ace_mcp_app)
+app.mount("/v1/counselor", counselor_mcp_app)
 
 # REST API endpoints
 app.include_router(pricing_router, prefix="/pricing")

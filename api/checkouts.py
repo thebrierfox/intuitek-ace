@@ -6,12 +6,24 @@ POST   /checkouts/{id}/complete — Complete checkout
 DELETE /checkouts/{id}         — Cancel checkout
 """
 import os
+import re
 import uuid
 from typing import Optional
 
 import stripe
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+_ALLOWED_REDIRECT = re.compile(r"^https://intuitek\.ai/")
+
+
+def _validate_redirect_url(url: str, field: str) -> str:
+    if not _ALLOWED_REDIRECT.match(url):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field} must start with https://intuitek.ai/",
+        )
+    return url
 
 checkouts_router = APIRouter()
 
@@ -56,6 +68,9 @@ async def create_checkout(body: CreateCheckoutRequest):
                    f"Available: {list(PRODUCT_PRICE_MAP.keys())}",
         )
 
+    success_url = _validate_redirect_url(body.success_url, "success_url")
+    cancel_url = _validate_redirect_url(body.cancel_url, "cancel_url")
+
     try:
         session_params = {
             "mode": "subscription",
@@ -72,8 +87,8 @@ async def create_checkout(body: CreateCheckoutRequest):
                     "quantity": 1,
                 }
             ],
-            "success_url": body.success_url,
-            "cancel_url": body.cancel_url,
+            "success_url": success_url,
+            "cancel_url": cancel_url,
             "metadata": body.metadata or {},
         }
         if body.customer_email:

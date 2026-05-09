@@ -7,8 +7,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Header, Request, Response
+from fastapi import Depends, FastAPI, Header, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
+
+from .auth import require_auth
 
 MCP_VERSION = "2025-11-25"
 
@@ -48,6 +50,7 @@ class MCPServer:
         async def handle_post(
             request: Request,
             mcp_session_id: Optional[str] = Header(None, alias="mcp-session-id"),
+            _auth: str = Depends(require_auth),
         ):
             body = await request.json()
             session_id = mcp_session_id or str(uuid.uuid4())

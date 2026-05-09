@@ -61,8 +61,8 @@ PRICING = {
         },
         {
             "id": "counselor-ai-strategy",
-            "name": "COUNSELOR Legal Reasoning Engine",
-            "description": "Six-agent sealed legal reasoning pipeline with Bayesian calibration and FTS5 case-law search.",
+            "name": "COUNSELOR AI Strategy Advisor",
+            "description": "Expert AI infrastructure guidance and agent stack evaluation for developers and CTOs building autonomous systems. Get architectural decisions, framework comparisons, and implementation strategy from a specialized AI systems advisor.",
             "pricing_models": [
                 {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["counselor-ai-strategy"], "unit": "tool_call"},
                 {
@@ -70,13 +70,13 @@ PRICING = {
                     "protocol": "acp",
                     "checkout_url": "https://api.intuitek.ai/checkouts",
                     "tiers": [
-                        {"name": "starter", "price_usd": 49, "period": "month", "included_calls": 200},
-                        {"name": "professional", "price_usd": 199, "period": "month", "included_calls": 2000},
+                        {"name": "starter", "price_usd": 29, "period": "month", "included_calls": 200},
+                        {"name": "professional", "price_usd": 99, "period": "month", "included_calls": 2000},
                     ],
                 },
             ],
             "payment_methods": ["shared_payment_token", "x402_wallet", "api_key_billing"],
-            "trial": {"available": True, "calls": 10, "requires_payment": False},
+            "trial": {"available": True, "calls": 25, "requires_payment": False},
         },
     ],
     "mcp_servers": [

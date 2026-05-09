@@ -8,6 +8,7 @@ Surfaces:
   POST /intake/submit           — Customer intake form backend
   GET  /intake/verify/{token}   — Token validity check (frontend pre-validation)
   GET  /health                  — Aegis heartbeat probe
+  GET  /yield-ui                — YIELD INTELLIGENCE user-facing web frontend
 
 Deploy: Railway (single service, HTTPS via Railway TLS)
 """
@@ -763,6 +764,15 @@ async def success_page():
     <p><a href="https://www.shopclawmart.com/thebrierfox" style="color:#7c3aed;">Browse more skills</a></p>
     </body></html>
     """, status_code=200)
+
+
+@app.get("/yield-ui", response_class=HTMLResponse)
+async def yield_ui():
+    """YIELD INTELLIGENCE user-facing frontend."""
+    html_path = Path(__file__).parent / "yield_ui.html"
+    if html_path.exists():
+        return HTMLResponse(content=html_path.read_text(), status_code=200)
+    return HTMLResponse(content="<html><body>YIELD INTELLIGENCE UI not found.</body></html>", status_code=404)
 
 
 # HEALTH / AEGIS PROBE

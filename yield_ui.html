@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YIELD INTELLIGENCE — Passive Income Analyzer | IntuiTek¹</title>
+  <meta name="description" content="Find the highest-returning passive income opportunities for your capital. Free AI-powered yield analysis — dividend stocks, REITs, bonds, and more." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131e;
+      --border: #2a2a3e;
+      --accent: #7c3aed;
+      --accent2: #4f46e5;
+      --text: #e8e8f0;
+      --text-muted: #9090b0;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      padding: 24px 16px 64px;
+    }
+
+    header {
+      text-align: center;
+      padding: 40px 0 32px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: #f0f0ff;
+      margin-bottom: 14px;
+    }
+
+    h1 span {
+      background: linear-gradient(90deg, #a78bfa, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 540px;
+      margin: 0 auto 8px;
+      line-height: 1.6;
+    }
+
+    .dev-tag {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 0.78rem;
+      color: #555577;
+      background: #13131e;
+      border: 1px solid #2a2a3e;
+      border-radius: 6px;
+      padding: 4px 10px;
+    }
+
+    .dev-tag code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      color: #7c7caa;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #f0f0ff;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 540px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    input, select {
+      background: #0d0d18;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      width: 100%;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="number"] { -moz-appearance: textfield; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 28px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 20px;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .results { margin-top: 24px; }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 500px) {
+      .metric-row { grid-template-columns: 1fr; }
+    }
+
+    .metric {
+      background: #0d0d18;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .metric .value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--green);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric .label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .opportunities-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .opportunities-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .opportunities-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #1a1a2e;
+    }
+
+    .opportunities-table tr:last-child td { border-bottom: none; }
+
+    .yield-pct {
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .risk-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .risk-very.low, .risk-very-low { background: #0d2d1e; color: #34d399; }
+    .risk-low { background: #0d2d1e; color: #6ee7b7; }
+    .risk-moderate { background: #2d2200; color: #fbbf24; }
+    .risk-high { background: #2d0d0d; color: #f87171; }
+
+    .alloc-bar {
+      display: flex;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 16px 0;
+      gap: 2px;
+    }
+
+    .alloc-segment {
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .alloc-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+    .alloc-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+    }
+
+    .alloc-dot {
+      width: 10px; height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .disclaimer {
+      font-size: 0.72rem;
+      color: #44446a;
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+
+    .error-msg {
+      background: #1a0808;
+      border: 1px solid #3d1010;
+      color: #f87171;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      margin-top: 16px;
+    }
+
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 0.78rem;
+      color: #333355;
+    }
+
+    footer a { color: #555588; text-decoration: none; }
+    footer a:hover { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">YIELD INTELLIGENCE</div>
+  <h1>Find your <span>passive income</span> strategy</h1>
+  <p class="subtitle">AI-powered yield analysis across dividend stocks, REITs, bonds, and covered-call ETFs. Free to use.</p>
+  <div class="dev-tag">MCP endpoint: <code>api.intuitek.ai/yield/mcp</code></div>
+</header>
+
+<div class="container">
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('analyze', this)">Analyze Opportunities</button>
+    <button class="tab" onclick="switchTab('optimize', this)">Optimize Portfolio</button>
+  </div>
+
+  <!-- PANEL: Analyze Opportunities -->
+  <div id="panel-analyze" class="panel active">
+    <div class="card">
+      <h2>Yield Opportunity Analyzer</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="capital">Investment Capital ($)</label>
+          <input type="number" id="capital" placeholder="e.g. 25000" min="0" step="100" />
+        </div>
+        <div class="form-group">
+          <label for="target">Monthly Income Target ($)</label>
+          <input type="number" id="target" placeholder="e.g. 500 (optional)" min="0" step="10" />
+        </div>
+        <div class="form-group full">
+          <label for="risk">Risk Tolerance</label>
+          <select id="risk">
+            <option value="conservative">Conservative — Treasury ETFs, HYSAs, IG bonds (4–5%)</option>
+            <option value="moderate" selected>Moderate — Dividend ETFs, REITs, preferred stock (4–6%)</option>
+            <option value="aggressive">Aggressive — Covered-call ETFs, BDCs, HY bonds (8–12%)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" id="btn-analyze" onclick="analyzeYield()">
+        <span class="spinner" id="spinner-analyze"></span>
+        <span id="btn-analyze-text">Analyze My Capital</span>
+      </button>
+    </div>
+
+    <div class="results" id="results-analyze"></div>
+  </div>
+
+  <!-- PANEL: Optimize Portfolio -->
+  <div id="panel-optimize" class="panel">
+    <div class="card">
+      <h2>Income Portfolio Optimizer</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="monthly-income">Target Monthly Income ($)</label>
+          <input type="number" id="monthly-income" placeholder="e.g. 2000" min="0" step="50" />
+        </div>
+        <div class="form-group">
+          <label for="horizon">Time Horizon (years)</label>
+          <input type="number" id="horizon" placeholder="e.g. 10" min="1" max="40" step="1" value="10" />
+        </div>
+      </div>
+      <button class="btn" id="btn-optimize" onclick="optimizePortfolio()">
+        <span class="spinner" id="spinner-optimize"></span>
+        <span id="btn-optimize-text">Build My Portfolio Plan</span>
+      </button>
+    </div>
+
+    <div class="results" id="results-optimize"></div>
+  </div>
+</div>
+
+<footer>
+  Built by <a href="https://intuitek.ai">IntuiTek¹</a> &mdash; ~K¹ (W. Kyle Million) &middot;
+  <a href="/pricing">API pricing</a> &middot;
+  <a href="https://github.com/thebrierfox/intuitek-ace">GitHub</a>
+</footer>
+
+<script>
+  const ALLOC_COLORS = ['#7c3aed','#4f46e5','#10b981','#f59e0b','#64748b'];
+
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+  }
+
+  function fmt$(n) {
+    return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+
+  function setLoading(id, on) {
+    const btn = document.getElementById('btn-' + id);
+    const spinner = document.getElementById('spinner-' + id);
+    const text = document.getElementById('btn-' + id + '-text');
+    btn.disabled = on;
+    spinner.style.display = on ? 'block' : 'none';
+    text.textContent = on ? 'Analyzing…' : (id === 'analyze' ? 'Analyze My Capital' : 'Build My Portfolio Plan');
+  }
+
+  async function callMCP(toolName, args) {
+    const resp = await fetch('/yield/mcp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'tools/call',
+        params: { name: toolName, arguments: args }
+      })
+    });
+    if (!resp.ok) throw new Error('Server error: ' + resp.status);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    if (data.result && data.result.isError) throw new Error(data.result.content[0]?.text || 'Tool error');
+    const text = data.result?.content?.[0]?.text;
+    if (!text) throw new Error('Empty response');
+    return JSON.parse(text);
+  }
+
+  function riskClass(r) {
+    return 'risk-' + r.replace(/\s+/g, '-').toLowerCase();
+  }
+
+  async function analyzeYield() {
+    const capital = parseFloat(document.getElementById('capital').value);
+    if (!capital || capital <= 0) {
+      document.getElementById('results-analyze').innerHTML =
+        '<div class="error-msg">Enter a valid investment capital amount to continue.</div>';
+      return;
+    }
+    const target = parseFloat(document.getElementById('target').value) || null;
+    const risk = document.getElementById('risk').value;
+
+    setLoading('analyze', true);
+    document.getElementById('results-analyze').innerHTML = '';
+
+    try {
+      const args = { investment_capital: capital, risk_tolerance: risk };
+      if (target) args.monthly_income_target = target;
+
+      const r = await callMCP('analyze_yield_opportunities', args);
+
+      const gap = r.income_gap_usd;
+      const gapHTML = gap !== null && gap !== undefined
+        ? `<div class="metric">
+            <div class="value" style="color:${gap <= 0 ? 'var(--green)' : 'var(--yellow)'}">
+              ${gap <= 0 ? '✓ Met' : fmt$(gap) + '/mo'}
+            </div>
+            <div class="label">Income Gap</div>
+          </div>`
+        : '';
+
+      const oppRows = (r.top_opportunities || []).map(o =>
+        `<tr>
+          <td>${o.asset}</td>
+          <td class="yield-pct">${o.yield_pct}%</td>
+          <td><span class="risk-badge ${riskClass(o.risk)}">${o.risk}</span></td>
+        </tr>`
+      ).join('');
+
+      document.getElementById('results-analyze').innerHTML = `
+        <div class="card">
+          <p class="section-label">Projected Income</p>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="value">${fmt$(r.projected_monthly_income_usd)}<span style="font-size:0.7em;color:var(--text-muted)">/mo</span></div>
+              <div class="label">Monthly Income</div>
+            </div>
+            <div class="metric">
+              <div class="value">${fmt$(r.projected_annual_income_usd)}</div>
+              <div class="label">Annual Income</div>
+            </div>
+            ${gapHTML || `<div class="metric">
+              <div class="value">${r.projected_annual_yield_pct}%</div>
+              <div class="label">Annual Yield</div>
+            </div>`}
+          </div>
+
+          <p class="section-label">Top Opportunities (${risk})</p>
+          <table class="opportunities-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Yield</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody>${oppRows}</tbody>
+          </table>
+
+          <p class="disclaimer">${r.disclaimer}</p>
+        </div>
+      `;
+    } catch(e) {
+      document.getElementById('results-analyze').innerHTML =
+        `<div class="error-msg">Analysis failed: ${e.message}</div>`;
+    } finally {
+      setLoading('analyze', false);
+    }
+  }
+
+  async function optimizePortfolio() {
+    const monthly = parseFloat(document.getElementById('monthly-income').value);
+    if (!monthly || monthly <= 0) {
+      document.getElementById('results-optimize').innerHTML =
+        '<div class="error-msg">Enter a target monthly income to continue.</div>';
+      return;
+    }
+    const horizon = parseInt(document.getElementById('horizon').value) || 10;
+
+    setLoading('optimize', true);
+    document.getElementById('results-optimize').innerHTML = '';
+
+    try {
+      const r = await callMCP('optimize_income_portfolio', {
+        target_monthly_income: monthly,
+        time_horizon_years: horizon
+      });
+
+      const allocs = r.recommended_allocation || [];
+      const barHTML = allocs.map((a, i) =>
+        `<div class="alloc-segment" style="width:${a.weight_pct}%;background:${ALLOC_COLORS[i % ALLOC_COLORS.length]}"></div>`
+      ).join('');
+
+      const legendHTML = allocs.map((a, i) =>
+        `<div class="alloc-item">
+          <div class="alloc-dot" style="background:${ALLOC_COLORS[i % ALLOC_COLORS.length]}"></div>
+          <span>${a.asset_class} <strong>${a.weight_pct}%</strong> <span style="color:var(--text-muted);font-size:0.78em">${a.example}</span></span>
+        </div>`
+      ).join('');
+
+      document.getElementById('results-optimize').innerHTML = `
+        <div class="card">
+          <p class="section-label">Capital Required</p>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="value" style="font-size:1.25rem">${fmt$(r.estimated_required_capital_usd)}</div>
+              <div class="label">Required Capital</div>
+            </div>
+            <div class="metric">
+              <div class="value">${fmt$(r.target_annual_income_usd)}</div>
+              <div class="label">Annual Target</div>
+            </div>
+            <div class="metric">
+              <div class="value">${r.time_horizon_years}yr</div>
+              <div class="label">Horizon</div>
+            </div>
+          </div>
+
+          <p class="section-label">Recommended Allocation</p>
+          <div class="alloc-bar">${barHTML}</div>
+          <div class="alloc-legend">${legendHTML}</div>
+
+          <p style="font-size:0.82rem;color:var(--text-muted);margin-top:16px">
+            Rebalance: <strong>${r.rebalance_frequency}</strong>
+          </p>
+
+          <p class="disclaimer">${r.disclaimer}</p>
+        </div>
+      `;
+    } catch(e) {
+      document.getElementById('results-optimize').innerHTML =
+        `<div class="error-msg">Optimization failed: ${e.message}</div>`;
+    } finally {
+      setLoading('optimize', false);
+    }
+  }
+
+  // Allow Enter key to submit
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const active = document.querySelector('.panel.active');
+      if (active.id === 'panel-analyze') analyzeYield();
+      else optimizePortfolio();
+    }
+  });
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ace_server.py .
 COPY package_generator.py .
 COPY success.html .
+COPY yield_ui.html .
 COPY config/ ./config/
 COPY mcp/ ./mcp/
 COPY api/ ./api/

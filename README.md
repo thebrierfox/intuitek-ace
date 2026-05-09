@@ -70,6 +70,35 @@ POST https://api.intuitek.ai/checkouts
 
 ---
 
+## MCP client setup
+
+Add YIELD INTELLIGENCE to any MCP client (Claude Desktop, Cursor, Windsurf, Cline, etc.):
+
+```json
+{
+  "mcpServers": {
+    "yield-intelligence": {
+      "url": "https://mcp.intuitek.ai/yield/mcp"
+    }
+  }
+}
+```
+
+No API key required. No account. 50 free trial calls included.
+
+After adding, your AI assistant gains two tools:
+
+| Tool | What it does |
+|------|-------------|
+| `analyze_yield_opportunities` | Scans Treasury yields, dividend ETFs, REITs, preferred stocks, and CDs — surfaces the highest-returning options for your capital and risk tolerance |
+| `optimize_income_portfolio` | Builds or rebalances a diversified portfolio to hit a target monthly income figure, with suggested allocation percentages and rebalancing cadence |
+
+**Example prompts:**
+- *"I have $50k to invest for passive income at moderate risk. What's yielding the most right now?"*
+- *"Build me a portfolio targeting $500/month income. I prefer low volatility."*
+
+---
+
 ## Quick start (developer)
 
 ```bash

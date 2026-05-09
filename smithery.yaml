@@ -40,13 +40,9 @@ startCommand:
   commandFunction: |-
     (config) => ({
       command: "python3",
-      args: ["-m", "uvicorn", "ace_server:app", "--host", "0.0.0.0", "--port", "8000"],
+      args: ["-m", "uvicorn", "yield_standalone:app", "--host", "0.0.0.0", "--port", "8000"],
       env: {
-        PORT: "8000",
-        FERNET_KEY: config.FERNET_KEY || "",
-        STRIPE_SECRET_KEY: config.STRIPE_SECRET_KEY || "",
-        STRIPE_WEBHOOK_SECRET: config.STRIPE_WEBHOOK_SECRET || "",
-        RESEND_API_KEY: config.RESEND_API_KEY || ""
+        PORT: "8000"
       }
     })
 

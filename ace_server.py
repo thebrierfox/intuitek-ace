@@ -459,7 +459,7 @@ async def _handle_subscription_cancelled(subscription: dict):
 
 
 async def _handle_payment_failed(invoice: dict):
-    sub_id = invoice.get("subscription")
+    sub_id = invoice["subscription"]
     if not sub_id:
         return
     with get_db() as conn:
@@ -472,7 +472,7 @@ async def _handle_payment_failed(invoice: dict):
 
 async def _handle_payment_succeeded(invoice: dict):
     """Reinstate cancelled/failed subscription on successful payment."""
-    sub_id = invoice.get("subscription")
+    sub_id = invoice["subscription"]
     if not sub_id:
         return
     with get_db() as conn:
@@ -489,7 +489,7 @@ async def _handle_payment_succeeded(invoice: dict):
 
 def _get_stripe_customer_email(stripe_customer_id: str) -> str:
     cust = stripe.Customer.retrieve(stripe_customer_id)
-    email = cust.get("email") or ""
+    email = cust.email or ""
     if not email:
         raise ValueError(f"No email on Stripe customer {stripe_customer_id}")
     return email

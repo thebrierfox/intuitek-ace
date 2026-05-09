@@ -97,8 +97,20 @@ CREATE TABLE IF NOT EXISTS customers (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     name TEXT,
-    stripe_customer_id TEXT UNIQUE,
-    status TEXT DEFAULT 'active',
+    stripe_customer_id TEXT,
+    customer_stripe_id TEXT,
+    subscription_id TEXT UNIQUE,
+    license_key TEXT UNIQUE,
+    intake_token TEXT UNIQUE,
+    intake_token_exp INTEGER,
+    api_key_enc TEXT,
+    api_key_hash TEXT,
+    agent_name TEXT,
+    use_case TEXT,
+    status TEXT DEFAULT 'awaiting_intake',
+    intake_at INTEGER,
+    provisioned_at INTEGER,
+    cancelled_at INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -184,6 +196,23 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
+CREATE TABLE IF NOT EXISTS webhook_log (
+    event_id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    processed INTEGER DEFAULT 0,
+    error TEXT,
+    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS license_checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    license_key TEXT NOT NULL,
+    result TEXT NOT NULL,
+    source_ip TEXT,
+    stripe_status TEXT,
+    checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 
@@ -194,16 +223,77 @@ CREATE INDEX IF NOT EXISTS idx_intake_forms_account_id ON intake_forms(account_i
 CREATE INDEX IF NOT EXISTS idx_agent_packages_intake_form_id ON agent_packages(intake_form_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_account_id ON invoices(account_id);
 CREATE INDEX IF NOT EXISTS idx_events_account_id ON events(account_id);
+CREATE INDEX IF NOT EXISTS idx_customers_subscription_id ON customers(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_customers_license_key ON customers(license_key);
+CREATE INDEX IF NOT EXISTS idx_customers_intake_token ON customers(intake_token);
+CREATE INDEX IF NOT EXISTS idx_license_checks_license_key ON license_checks(license_key);
 """
     with get_db() as conn:
         conn.executescript(schema)
     log.info("ACE database initialized at %s", DB_PATH)
 
 
+def migrate_schema():
+    """Idempotent migration: ensures deployed DB matches current schema.
+
+    Called after init_db() at every startup. Safe on both fresh volumes
+    (all CREATE TABLE IF NOT EXISTS are no-ops) and existing Railway volumes
+    that predate the C1/C2 schema fixes (ALTER TABLE adds missing columns).
+    """
+    with get_db() as conn:
+        # C1 fix — missing tables: safe on both fresh and existing volumes
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS webhook_log (
+                event_id TEXT PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                processed INTEGER DEFAULT 0,
+                error TEXT,
+                received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS license_checks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                license_key TEXT NOT NULL,
+                result TEXT NOT NULL,
+                source_ip TEXT,
+                stripe_status TEXT,
+                checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # C2 fix — missing columns on customers; only ALTER when absent
+        existing_cols = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(customers)").fetchall()
+        }
+        missing_cols = [
+            ("subscription_id",   "TEXT"),
+            ("customer_stripe_id","TEXT"),
+            ("license_key",       "TEXT"),
+            ("intake_token",      "TEXT"),
+            ("intake_token_exp",  "INTEGER"),
+            ("api_key_enc",       "TEXT"),
+            ("api_key_hash",      "TEXT"),
+            ("agent_name",        "TEXT"),
+            ("use_case",          "TEXT"),
+            ("intake_at",         "INTEGER"),
+            ("provisioned_at",    "INTEGER"),
+            ("cancelled_at",      "INTEGER"),
+        ]
+        for col_name, col_type in missing_cols:
+            if col_name not in existing_cols:
+                conn.execute(
+                    f"ALTER TABLE customers ADD COLUMN {col_name} {col_type}"
+                )
+                log.info("migrate_schema: added customers.%s %s", col_name, col_type)
+
+    log.info("migrate_schema: complete")
+
+
 # ── LIFESPAN ─────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    migrate_schema()
     yield
 
 

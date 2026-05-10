@@ -5,11 +5,13 @@ Returns HTTP 402 with payment requirements when no valid payment is present.
 Spec: https://x402.org | Facilitator: https://api.cdp.coinbase.com/platform/v2/x402
 """
 import base64
+import hashlib
 import json
 import logging
 import os
 import pathlib
 import secrets
+import sqlite3
 import time
 from typing import Optional
 
@@ -174,6 +176,61 @@ async def _cdp_request(path: str, payment_token: str, requirements: dict) -> Opt
         return None
 
 
+_DB_PATH = os.environ.get("ACE_DB_PATH", "/data/ace.db")
+
+
+def _payment_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _claim_payment_slot(phash: str, path: str) -> bool:
+    """
+    Attempt to claim this payment hash atomically.
+    Returns True if this call is the first to claim it (proceed to settle).
+    Returns False if a previous call already claimed it (reject as replay).
+    """
+    try:
+        conn = sqlite3.connect(_DB_PATH, timeout=5)
+        conn.execute(
+            "INSERT OR IGNORE INTO x402_payment_log(payment_hash, path) VALUES (?, ?)",
+            (phash, path),
+        )
+        claimed = conn.total_changes > 0
+        conn.commit()
+        conn.close()
+        return claimed
+    except Exception as exc:
+        log.error("x402: payment_log insert failed: %s — failing open (no idempotency)", exc)
+        return True  # fail open: prefer double-serve over blocking valid payment
+
+
+def _mark_payment_settled(phash: str, tx_hash: str) -> None:
+    try:
+        conn = sqlite3.connect(_DB_PATH, timeout=5)
+        conn.execute(
+            "UPDATE x402_payment_log SET settled = 1, tx_hash = ? WHERE payment_hash = ?",
+            (tx_hash, phash),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        log.error("x402: payment_log settle update failed: %s", exc)
+
+
+def _release_payment_slot(phash: str) -> None:
+    """Remove unsettled claim so the same proof can be retried on settle failure."""
+    try:
+        conn = sqlite3.connect(_DB_PATH, timeout=5)
+        conn.execute(
+            "DELETE FROM x402_payment_log WHERE payment_hash = ? AND settled = 0",
+            (phash,),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        log.error("x402: payment_log release failed: %s", exc)
+
+
 def _is_v1_route(path: str) -> bool:
     return path.startswith("/v1/") or path == "/v1"
 
@@ -208,6 +265,8 @@ class X402Middleware(BaseHTTPMiddleware):
             log.info("x402: no payment header for %s", path)
             return _payment_required_response(path)
 
+        phash = _payment_hash(payment_token)
+
         # Step 1: Verify EIP-3009 signature via CDP facilitator
         verify = await _cdp_request("verify", payment_token, reqs)
         if not verify or not verify.get("isValid"):
@@ -224,10 +283,24 @@ class X402Middleware(BaseHTTPMiddleware):
                 headers={"x-payment-requirements": json.dumps(reqs)},
             )
 
-        # Step 2: Settle on-chain via CDP (produces cryptographic event that triggers Bazaar indexing)
+        # Step 2: Claim slot atomically — prevents replay of the same proof
+        if not _claim_payment_slot(phash, path):
+            log.info("x402: replay attempt detected for %s", path)
+            return JSONResponse(
+                status_code=402,
+                content={
+                    "error": "Payment already used",
+                    "x402Version": 1,
+                    "paymentRequirements": reqs,
+                },
+                headers={"x-payment-requirements": json.dumps(reqs)},
+            )
+
+        # Step 3: Settle on-chain via CDP (produces cryptographic event that triggers Bazaar indexing)
         settle = await _cdp_request("settle", payment_token, reqs)
         if not settle or not settle.get("success"):
             log.error("x402: CDP settle failed for %s", path)
+            _release_payment_slot(phash)  # allow retry with same proof
             return JSONResponse(
                 status_code=402,
                 content={
@@ -238,11 +311,14 @@ class X402Middleware(BaseHTTPMiddleware):
                 headers={"x-payment-requirements": json.dumps(reqs)},
             )
 
-        # Verified and settled — forward request
+        tx_hash = settle.get("txHash", "")
+        _mark_payment_settled(phash, tx_hash)
+
+        # Verified, claimed, and settled — forward request
         log.info(
             "x402: payment settled via CDP for %s, txHash=%s",
             path,
-            settle.get("txHash"),
+            tx_hash,
         )
         response = await call_next(request)
         response.headers["x-payment-response"] = json.dumps(
@@ -251,7 +327,7 @@ class X402Middleware(BaseHTTPMiddleware):
                 "network": "base",
                 "protocol": "x402",
                 "facilitator": "cdp",
-                "txHash": settle.get("txHash"),
+                "txHash": tx_hash,
                 "settleReceipt": settle.get("settleReceipt"),
             }
         )

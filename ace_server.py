@@ -228,6 +228,15 @@ CREATE INDEX IF NOT EXISTS idx_customers_subscription_id ON customers(subscripti
 CREATE INDEX IF NOT EXISTS idx_customers_license_key ON customers(license_key);
 CREATE INDEX IF NOT EXISTS idx_customers_intake_token ON customers(intake_token);
 CREATE INDEX IF NOT EXISTS idx_license_checks_license_key ON license_checks(license_key);
+
+CREATE TABLE IF NOT EXISTS x402_payment_log (
+    payment_hash TEXT PRIMARY KEY,
+    path TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    settled INTEGER NOT NULL DEFAULT 0,
+    tx_hash TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_x402_payment_log_settled ON x402_payment_log(settled);
 """
     with get_db() as conn:
         conn.executescript(schema)
@@ -259,6 +268,14 @@ def migrate_schema():
                 stripe_status TEXT,
                 checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS x402_payment_log (
+                payment_hash TEXT PRIMARY KEY,
+                path TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                settled INTEGER NOT NULL DEFAULT 0,
+                tx_hash TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_x402_payment_log_settled ON x402_payment_log(settled);
         """)
 
         # C2 fix — missing columns on customers; only ALTER when absent

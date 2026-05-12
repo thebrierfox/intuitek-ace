@@ -102,7 +102,7 @@ PRICING = {
             ],
             "payment_methods": ["api_key_billing"],
             "trial": {"available": True, "calls": 3, "requires_payment": False, "description": "3 free preview intakes per email"},
-            "endpoint": "https://lii-api-production.up.railway.app",
+            "endpoint": "https://lii-server-production.up.railway.app",
         },
     ],
     "mcp_servers": [

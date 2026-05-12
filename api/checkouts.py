@@ -74,24 +74,23 @@ async def create_checkout(body: CreateCheckoutRequest):
     cancel_url = _validate_redirect_url(body.cancel_url, "cancel_url")
 
     try:
+        mode = price_info.get("mode", "subscription")
+        price_data: dict = {
+            "currency": price_info["currency"],
+            "unit_amount": price_info["amount"],
+            "product_data": {
+                "name": f"IntuiTek\u00b9 {body.product_id} ({body.tier})",
+            },
+        }
+        if mode == "subscription":
+            price_data["recurring"] = {"interval": "month"}
+
         session_params = {
-            "mode": "subscription",
-            "line_items": [
-                {
-                    "price_data": {
-                        "currency": price_info["currency"],
-                        "unit_amount": price_info["amount"],
-                        "recurring": {"interval": "month"},
-                        "product_data": {
-                            "name": f"IntuiTek\u00b9 {body.product_id} ({body.tier})",
-                        },
-                    },
-                    "quantity": 1,
-                }
-            ],
+            "mode": mode,
+            "line_items": [{"price_data": price_data, "quantity": 1}],
             "success_url": success_url,
             "cancel_url": cancel_url,
-            "metadata": body.metadata or {},
+            "metadata": {**(body.metadata or {}), "product_id": body.product_id, "tier": body.tier},
         }
         if body.customer_email:
             session_params["customer_email"] = body.customer_email

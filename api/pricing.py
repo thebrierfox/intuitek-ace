@@ -78,6 +78,32 @@ PRICING = {
             "payment_methods": ["shared_payment_token", "x402_wallet", "api_key_billing"],
             "trial": {"available": True, "calls": 25, "requires_payment": False},
         },
+        {
+            "id": "lii-legal-intake-intelligence",
+            "name": "Legal Intake Intelligence",
+            "description": "AI-powered client intake triage for solo attorneys — matter classification, jurisdiction flags, statute candidates, and risk scoring in <30 seconds. Converts raw narratives into structured intake reports with PDF delivery.",
+            "pricing_models": [
+                {
+                    "type": "one_time",
+                    "protocol": "acp",
+                    "checkout_url": "https://api.intuitek.ai/checkouts",
+                    "tiers": [
+                        {"name": "single", "price_usd": 49, "unit": "matter_intake"},
+                    ],
+                },
+                {
+                    "type": "subscription",
+                    "protocol": "acp",
+                    "checkout_url": "https://api.intuitek.ai/checkouts",
+                    "tiers": [
+                        {"name": "unlimited", "price_usd": 149, "period": "month", "included_calls": "unlimited"},
+                    ],
+                },
+            ],
+            "payment_methods": ["api_key_billing"],
+            "trial": {"available": True, "calls": 3, "requires_payment": False, "description": "3 free preview intakes per email"},
+            "endpoint": "https://lii-api-production.up.railway.app",
+        },
     ],
     "mcp_servers": [
         {"product": "yield-intelligence", "url": "https://mcp.intuitek.ai/yield", "transport": "streamable-http"},

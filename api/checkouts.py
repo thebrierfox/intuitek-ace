@@ -37,8 +37,7 @@ PRODUCT_PRICE_MAP = {
     "ace-autonomous-commerce-professional": {"amount": 14900, "currency": "usd"},
     "counselor-ai-strategy-starter": {"amount": 4900, "currency": "usd"},
     "counselor-ai-strategy-professional": {"amount": 19900, "currency": "usd"},
-    "lii-per-matter-single": {"amount": 4900, "currency": "usd", "mode": "payment"},
-    "lii-monthly-unlimited": {"amount": 14900, "currency": "usd", "mode": "subscription"},
+
 }
 
 

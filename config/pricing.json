@@ -37,24 +37,6 @@
       "x402_asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
       "x402_network": "base",
       "x402_pay_to": "0x03d773c52B67993e60Ecb3134b17436fE03B584c"
-    },
-    {
-      "id": "lii-per-matter",
-      "name": "Legal Intake Intelligence — Per Matter",
-      "x402_price_usd": 49.00,
-      "route": "/v1/lii",
-      "x402_asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "x402_network": "base",
-      "x402_pay_to": "0x03d773c52B67993e60Ecb3134b17436fE03B584c"
-    },
-    {
-      "id": "lii-monthly",
-      "name": "Legal Intake Intelligence — Monthly Unlimited",
-      "x402_price_usd": 149.00,
-      "route": "/v1/lii",
-      "x402_asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "x402_network": "base",
-      "x402_pay_to": "0x03d773c52B67993e60Ecb3134b17436fE03B584c"
     }
   ]
 }

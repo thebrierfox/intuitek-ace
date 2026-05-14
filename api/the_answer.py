@@ -30,7 +30,7 @@ router = APIRouter(prefix="/answer", tags=["the-answer"])
 # ── CONFIG ───────────────────────────────────────────────────
 RESEND_API_KEY       = os.environ.get("RESEND_API_KEY", "")
 ANTHROPIC_API_KEY    = os.environ.get("ANTHROPIC_API_KEY", "")
-THE_ANSWER_PRICE_ID  = os.environ.get("THE_ANSWER_PRICE_ID", "")
+THE_ANSWER_PRICE_ID  = os.environ.get("THE_ANSWER_PRICE_ID", "price_1TWot2BDuMBkXxIDbULckhXe")
 ACE_BASE_URL         = os.environ.get("ACE_BASE_URL", "https://ace-license-server-production.up.railway.app")
 CLAUDE_MODEL         = "claude-sonnet-4-6"
 
@@ -168,8 +168,8 @@ def _send_answer_email(email: str, name: str, html: str) -> None:
 @router.post("/checkout")
 async def create_checkout(request: Request):
     """Create a Stripe Checkout Session for The Answer. Returns {checkout_url}."""
-    if not THE_ANSWER_PRICE_ID:
-        raise HTTPException(status_code=503, detail="THE_ANSWER_PRICE_ID not configured")
+    if not THE_ANSWER_PRICE_ID or not THE_ANSWER_PRICE_ID.startswith("price_"):
+        raise HTTPException(status_code=503, detail="Stripe price not configured")
 
     token = str(uuid.uuid4())
     success_url = f"{ACE_BASE_URL}/answer/form/{token}?session_id={{CHECKOUT_SESSION_ID}}"

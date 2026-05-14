@@ -12,6 +12,7 @@ DB table: answer_sessions (added via init_db)
 
 import logging
 import os
+import sqlite3
 import time
 import uuid
 from typing import Optional
@@ -68,12 +69,17 @@ that changes their position in the system. Name it precisely.
 """
 
 
-# ── HELPERS ──────────────────────────────────────────────────
+# ── DATABASE ─────────────────────────────────────────────────
+_DB_PATH = os.environ.get("ACE_DB_PATH", "/data/ace.db")
 
-def _get_db():
-    """Import from parent scope — avoids circular import."""
-    import ace_server
-    return ace_server.get_db()
+
+def _get_db() -> sqlite3.Connection:
+    import sqlite3 as _sqlite3
+    conn = _sqlite3.connect(_DB_PATH, check_same_thread=False)
+    conn.row_factory = _sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
 
 
 def _verify_stripe_payment(session_id: str) -> Optional[str]:

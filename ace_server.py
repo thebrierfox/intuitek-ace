@@ -237,6 +237,16 @@ CREATE TABLE IF NOT EXISTS x402_payment_log (
     tx_hash TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_x402_payment_log_settled ON x402_payment_log(settled);
+
+CREATE TABLE IF NOT EXISTS answer_sessions (
+    token TEXT PRIMARY KEY,
+    stripe_session_id TEXT NOT NULL,
+    email TEXT,
+    status TEXT NOT NULL DEFAULT 'pending_payment',
+    created_at INTEGER,
+    delivered_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_answer_sessions_stripe_session ON answer_sessions(stripe_session_id);
 """
     with get_db() as conn:
         conn.executescript(schema)
@@ -276,6 +286,15 @@ def migrate_schema():
                 tx_hash TEXT
             );
             CREATE INDEX IF NOT EXISTS idx_x402_payment_log_settled ON x402_payment_log(settled);
+            CREATE TABLE IF NOT EXISTS answer_sessions (
+                token TEXT PRIMARY KEY,
+                stripe_session_id TEXT NOT NULL,
+                email TEXT,
+                status TEXT NOT NULL DEFAULT 'pending_payment',
+                created_at INTEGER,
+                delivered_at INTEGER
+            );
+            CREATE INDEX IF NOT EXISTS idx_answer_sessions_stripe_session ON answer_sessions(stripe_session_id);
         """)
 
         # C2 fix — missing columns on customers; only ALTER when absent
@@ -403,6 +422,8 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
             await _handle_payment_failed(event["data"]["object"])
         elif event_type == "invoice.payment_succeeded":
             await _handle_payment_succeeded(event["data"]["object"])
+        elif event_type == "checkout.session.completed":
+            await _handle_checkout_session_completed(event["data"]["object"])
         else:
             log.info("Unhandled event type: %s", event_type)
 
@@ -502,6 +523,23 @@ async def _handle_payment_succeeded(invoice: dict):
                 (sub_id,),
             )
             log.info("Subscription reinstated: sub=%s", sub_id)
+
+
+async def _handle_checkout_session_completed(session: dict):
+    """Mark answer_session as paid when Stripe Checkout Session completes."""
+    session_id = session.get("id")
+    if not session_id:
+        return
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE answer_sessions
+            SET status = 'paid'
+            WHERE stripe_session_id = ? AND status = 'pending_payment'
+            """,
+            (session_id,),
+        )
+    log.info("checkout.session.completed: %s → answer_session marked paid", session_id)
 
 
 def _get_stripe_customer_email(stripe_customer_id: str) -> str:
@@ -822,6 +860,7 @@ from mcp.counselor_server import counselor_mcp_app
 from api.pricing import pricing_router
 from api.checkouts import checkouts_router
 from api.agent_card import agent_card_router
+from api.the_answer import router as answer_router
 from middleware.x402 import X402Middleware
 
 # MCP Streamable HTTP servers
@@ -838,6 +877,7 @@ app.mount("/v1/counselor", counselor_mcp_app)
 app.include_router(pricing_router, prefix="/pricing")
 app.include_router(checkouts_router, prefix="/checkouts")
 app.include_router(agent_card_router)  # handles /.well-known/agent-card.json
+app.include_router(answer_router)
 
 # x402 payment middleware (applies to /v1/* routes)
 app.add_middleware(X402Middleware)

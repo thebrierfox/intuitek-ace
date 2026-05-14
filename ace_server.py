@@ -453,8 +453,8 @@ async def _handle_subscription_created(subscription: dict):
              intake_token, intake_token_exp),
         )
         conn.execute(
-            "INSERT INTO provision_log (customer_id, step, status, detail) VALUES (?, ?, ?, ?)",
-            (customer_id, "subscription_created", "ok", f"sub={sub_id}"),
+            "INSERT INTO provision_log (id, customer_id, step, status, detail) VALUES (?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), customer_id, "subscription_created", "ok", f"sub={sub_id}"),
         )
 
     _send_intake_invitation(email, intake_token)
@@ -682,7 +682,8 @@ async def intake_submit(request: Request, payload: IntakePayload):
         api_key_enc  = fernet.encrypt(payload.anthropic_api_key.encode()).decode()
         api_key_hash = hashlib.sha256(payload.anthropic_api_key.encode()).hexdigest()
 
-        conn.execute(
+        # Atomic claim: only update if status is still 'awaiting_intake' — prevents duplicate delivery on concurrent requests
+        result = conn.execute(
             """
             UPDATE customers SET
               name            = ?,
@@ -692,7 +693,7 @@ async def intake_submit(request: Request, payload: IntakePayload):
               api_key_hash    = ?,
               status          = 'intake_received',
               intake_at       = ?
-            WHERE id = ?
+            WHERE id = ? AND status = 'awaiting_intake'
             """,
             (
                 payload.name,
@@ -704,9 +705,11 @@ async def intake_submit(request: Request, payload: IntakePayload):
                 customer_id,
             ),
         )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=409, detail="Intake already processed")
         conn.execute(
-            "INSERT INTO provision_log (customer_id, step, status) VALUES (?, 'intake_received', 'ok')",
-            (customer_id,),
+            "INSERT INTO provision_log (id, customer_id, step, status) VALUES (?, ?, 'intake_received', 'ok')",
+            (str(uuid.uuid4()), customer_id),
         )
 
     # Hand off to package generator (runs async — FastAPI background task)
@@ -741,16 +744,16 @@ async def _provision_customer(customer_data: dict):
                 (customer_data["id"],),
             )
             conn.execute(
-                "INSERT INTO provision_log (customer_id, step, status) VALUES (?, 'provisioned', 'ok')",
-                (customer_data["id"],),
+                "INSERT INTO provision_log (id, customer_id, step, status) VALUES (?, ?, 'provisioned', 'ok')",
+                (str(uuid.uuid4()), customer_data["id"]),
             )
         log.info("Customer provisioned: %s", customer_data["email"])
     except Exception as exc:
         log.exception("Provisioning failed for customer %s", customer_data["id"])
         with get_db() as conn:
             conn.execute(
-                "INSERT INTO provision_log (customer_id, step, status, detail) VALUES (?, 'provision_error', 'error', ?)",
-                (customer_data["id"], str(exc)),
+                "INSERT INTO provision_log (id, customer_id, step, status, detail) VALUES (?, ?, 'provision_error', 'error', ?)",
+                (str(uuid.uuid4()), customer_data["id"], str(exc)),
             )
             conn.execute(
                 "UPDATE customers SET status = 'provision_failed' WHERE id = ?",

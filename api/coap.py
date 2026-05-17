@@ -14,6 +14,7 @@ Stripe products:
 DB table: coap_sessions (added via init_db)
 """
 
+import json
 import logging
 import os
 import sqlite3
@@ -283,11 +284,14 @@ def _state_bls_code(state: str) -> str:
     return CODES.get(state.upper(), "29")
 
 
+class _InsufficientCreditsError(Exception):
+    """Raised when the Anthropic API key has insufficient credits."""
+
+
 # ── CLAUDE ANALYSIS ──────────────────────────────────────────
 
 def _run_coap_analysis(city: str, state: str, market_data: dict) -> str:
     """Call Claude Sonnet via Anthropic API to generate the COAP report."""
-    import json
     prompt = COAP_DIRECTIVE.format(
         city=city,
         state=state,
@@ -307,17 +311,56 @@ def _run_coap_analysis(city: str, state: str, market_data: dict) -> str:
         },
         timeout=180,
     )
+    if resp.status_code == 400:
+        err = resp.json().get("error", {})
+        if "credit balance" in err.get("message", "").lower():
+            raise _InsufficientCreditsError("API credit balance is zero")
     resp.raise_for_status()
     data = resp.json()
     return data["content"][0]["text"]
+
+
+def _deliver_queued_notice(email: str, city: str, state: str):
+    """Email customer that their report is queued and will arrive within 24h."""
+    body_html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<style>
+  body {{ font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #222; }}
+  h1 {{ font-size: 1.4em; }}
+  .footer {{ margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 0.85em; color: #666; }}
+</style>
+</head>
+<body>
+<h1>Your COAP Report is Queued</h1>
+<p>Thank you for your order — <strong>{city}, {state}</strong> opportunity analysis is queued and will be delivered to <strong>{email}</strong> within 24 hours.</p>
+<p>No action is needed on your part. You will receive the full report automatically once it processes.</p>
+<p>Questions? Reply to this email or contact <a href="mailto:kyle@intuitek.ai">kyle@intuitek.ai</a>.</p>
+<div class="footer">
+  <p>IntuiTek¹ &mdash; <a href="https://intuitek.ai">intuitek.ai</a></p>
+</div>
+</body>
+</html>"""
+    try:
+        httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "from": "Aegis <aegis@intuitek.ai>",
+                "to": [email],
+                "subject": f"Your COAP report for {city}, {state} is queued — arrives within 24h",
+                "html": body_html,
+            },
+            timeout=20,
+        )
+    except Exception as exc:
+        log.error("Failed to send queue-notice email to %s: %s", email, exc)
 
 
 # ── EMAIL DELIVERY ───────────────────────────────────────────
 
 def _deliver_report(email: str, city: str, state: str, report_md: str):
     """Email the COAP report via Resend as styled HTML."""
-    # Convert minimal markdown to HTML (headers + paragraphs)
-    import re
     lines = report_md.split("\n")
     html_lines = []
     for line in lines:
@@ -505,6 +548,18 @@ async def coap_submit(token: str, request: Request):
 
         log.info("COAP complete: %s, %s → %s", city, state, paid_email)
 
+    except _InsufficientCreditsError:
+        log.error("COAP queued (credits exhausted): %s, %s token=%s", city, state, token)
+        conn3 = _get_db()
+        conn3.execute(
+            "UPDATE coap_sessions SET status='pending_credits' WHERE token=?",
+            (token,),
+        )
+        conn3.commit()
+        conn3.close()
+        _deliver_queued_notice(paid_email, city, state)
+        return HTMLResponse(content=_queued_page(paid_email))
+
     except Exception as exc:
         log.error("COAP generation failed for token %s: %s", token, exc)
         conn3 = _get_db()
@@ -517,6 +572,41 @@ async def coap_submit(token: str, request: Request):
         raise HTTPException(status_code=500, detail="Report generation failed — we've been notified")
 
     return HTMLResponse(content=_done_page(paid_email))
+
+
+@router.post("/admin/retry-pending")
+async def coap_retry_pending(request: Request):
+    """Process all sessions with status='pending_credits'. Call after restoring API credits."""
+    ensure_coap_table()
+    conn = _get_db()
+    rows = conn.execute(
+        "SELECT token, email, city, state, stripe_session_id FROM coap_sessions WHERE status='pending_credits'",
+    ).fetchall()
+    conn.close()
+
+    results = []
+    for row in rows:
+        token = row["token"]
+        try:
+            market_data = _collect_market_data(row["city"], row["state"])
+            report_md = _run_coap_analysis(row["city"], row["state"], market_data)
+            _deliver_report(row["email"], row["city"], row["state"], report_md)
+            conn2 = _get_db()
+            conn2.execute(
+                "UPDATE coap_sessions SET status='delivered', completed_at=? WHERE token=?",
+                (int(time.time()), token),
+            )
+            conn2.commit()
+            conn2.close()
+            results.append({"token": token, "status": "delivered"})
+            log.info("COAP retry success: %s, %s → %s", row["city"], row["state"], row["email"])
+        except _InsufficientCreditsError:
+            results.append({"token": token, "status": "still_no_credits"})
+            break
+        except Exception as exc:
+            results.append({"token": token, "status": "error", "detail": str(exc)})
+
+    return {"processed": len(results), "results": results}
 
 
 # ── HTML TEMPLATES ───────────────────────────────────────────
@@ -562,6 +652,19 @@ def _payment_pending_page() -> str:
 <h2>Payment Confirming</h2>
 <p>Your payment is still being confirmed by Stripe. Please wait 30 seconds and refresh this page.</p>
 <p><a href="javascript:location.reload()">Refresh</a></p>
+</body>
+</html>"""
+
+
+def _queued_page(email: str) -> str:
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Report Queued</title></head>
+<body style="font-family:system-ui;max-width:500px;margin:60px auto;padding:24px">
+<h2>Your report is queued.</h2>
+<p>Check <strong>{email}</strong> — your City Opportunity Analysis will arrive within 24 hours.</p>
+<p>Questions? <a href="mailto:kyle@intuitek.ai">kyle@intuitek.ai</a></p>
+<p style="color:#999;font-size:0.85em">Built by Aegis &mdash; <a href="https://intuitek.ai">IntuiTek¹</a></p>
 </body>
 </html>"""
 

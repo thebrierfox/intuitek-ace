@@ -106,6 +106,37 @@ AGENT_CARD = {
                 "subscription": {"protocol": "acp", "checkout_url": "https://api.intuitek.ai/checkouts"},
             },
         },
+        {
+            "id": "coap-city-analysis",
+            "name": "COAP — City Opportunity Analysis",
+            "description": (
+                "AI-powered market analysis for any U.S. city: Census demographics, BLS labor data, "
+                "and OpenStreetMap business density combined into a business opportunity report with "
+                "startup capital estimates, Year 1 revenue projections, and a 90-day execution plan. "
+                "No paid data sources. Validated on real client deliverables."
+            ),
+            "tags": ["market-analysis", "business-intelligence", "real-estate", "small-business", "location-analysis"],
+            "examples": [
+                "Analyze Poplar Bluff, MO for the highest-ROI new business opportunity",
+                "What business should I open in Cape Girardeau, MO?",
+                "Give me a full market report for Fayetteville, AR",
+            ],
+            "inputModes": ["text", "application/json"],
+            "outputModes": ["application/json", "text/markdown"],
+            "pricing": {
+                "perReport": {
+                    "protocol": "stripe",
+                    "price_usd": 49.00,
+                    "checkout_url": "https://ace-license-server-production.up.railway.app/coap/checkout",
+                },
+                "subscription": {
+                    "protocol": "stripe",
+                    "price_usd": 149.00,
+                    "interval": "month",
+                    "checkout_url": "https://ace-license-server-production.up.railway.app/coap/checkout",
+                },
+            },
+        },
     ],
     "defaultInputModes": ["text", "application/json"],
     "defaultOutputModes": ["application/json"],

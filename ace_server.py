@@ -862,6 +862,7 @@ from api.checkouts import checkouts_router
 from api.agent_card import agent_card_router
 from api.the_answer import router as answer_router
 from api.coap import router as coap_router
+from api.byok import router as byok_router
 from middleware.x402 import X402Middleware
 
 # MCP Streamable HTTP servers
@@ -880,6 +881,7 @@ app.include_router(checkouts_router, prefix="/checkouts")
 app.include_router(agent_card_router)  # handles /.well-known/agent-card.json
 app.include_router(answer_router)
 app.include_router(coap_router)
+app.include_router(byok_router)
 
 # x402 payment middleware (applies to /v1/* routes)
 app.add_middleware(X402Middleware)

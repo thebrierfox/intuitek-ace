@@ -38,6 +38,8 @@ ANTHROPIC_API_KEY        = os.environ.get("ANTHROPIC_API_KEY", "")
 COAP_PRICE_PER_REPORT    = os.environ.get("COAP_PRICE_PER_REPORT", "price_1TXsq1BDuMBkXxIDm7oXAYIj")
 COAP_PRICE_MONTHLY       = os.environ.get("COAP_PRICE_MONTHLY", "price_1TXsqDBDuMBkXxID7mqaOg7E")
 ACE_BASE_URL             = os.environ.get("ACE_BASE_URL", "https://ace-license-server-production.up.railway.app")
+CLAUDE_GATEWAY_URL       = os.environ.get("CLAUDE_GATEWAY_URL", "https://claude-gateway.intuitek.ai")
+CLAUDE_GATEWAY_TOKEN     = os.environ.get("CLAUDE_GATEWAY_TOKEN", "")
 CLAUDE_MODEL             = "claude-sonnet-4-6"
 
 COAP_DIRECTIVE = """\
@@ -291,33 +293,66 @@ class _InsufficientCreditsError(Exception):
 # ── CLAUDE ANALYSIS ──────────────────────────────────────────
 
 def _run_coap_analysis(city: str, state: str, market_data: dict) -> str:
-    """Call Claude Sonnet via Anthropic API to generate the COAP report."""
+    """Call Claude Sonnet to generate the COAP report.
+
+    Primary path: Anthropic API with ANTHROPIC_API_KEY.
+    Fallback: local claude gateway (Max OAuth) when key is empty or credits exhausted.
+    """
     prompt = COAP_DIRECTIVE.format(
         city=city,
         state=state,
         market_data_json=json.dumps(market_data, indent=2),
     )
-    resp = httpx.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        json={
-            "model": CLAUDE_MODEL,
-            "max_tokens": 4096,
-            "messages": [{"role": "user", "content": prompt}],
-        },
-        timeout=180,
-    )
-    if resp.status_code == 400:
-        err = resp.json().get("error", {})
-        if "credit balance" in err.get("message", "").lower():
-            raise _InsufficientCreditsError("API credit balance is zero")
-    resp.raise_for_status()
-    data = resp.json()
-    return data["content"][0]["text"]
+    payload = {
+        "model": CLAUDE_MODEL,
+        "max_tokens": 4096,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    def _call_anthropic_direct() -> str:
+        resp = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json=payload,
+            timeout=180,
+        )
+        if resp.status_code == 400:
+            err = resp.json().get("error", {})
+            if "credit balance" in err.get("message", "").lower():
+                raise _InsufficientCreditsError("API credit balance is zero")
+        resp.raise_for_status()
+        return resp.json()["content"][0]["text"]
+
+    def _call_gateway() -> str:
+        if not CLAUDE_GATEWAY_TOKEN:
+            raise _InsufficientCreditsError("Gateway token not configured")
+        resp = httpx.post(
+            f"{CLAUDE_GATEWAY_URL}/v1/messages",
+            headers={
+                "Authorization": f"Bearer {CLAUDE_GATEWAY_TOKEN}",
+                "content-type": "application/json",
+            },
+            json=payload,
+            timeout=180,
+        )
+        if not resp.is_success:
+            raise RuntimeError(f"Gateway error {resp.status_code}: {resp.text[:200]}")
+        return resp.json()["content"][0]["text"]
+
+    # Route: use gateway directly if no API key, else try direct first then gateway
+    if not ANTHROPIC_API_KEY:
+        log.info("ANTHROPIC_API_KEY absent — routing COAP analysis through claude gateway")
+        return _call_gateway()
+
+    try:
+        return _call_anthropic_direct()
+    except _InsufficientCreditsError:
+        log.warning("ANTHROPIC_API_KEY credits exhausted — falling back to claude gateway")
+        return _call_gateway()
 
 
 def _deliver_queued_notice(email: str, city: str, state: str):

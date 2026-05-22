@@ -1,0 +1,24 @@
+OptNet: Differentiable Optimization as a Layer in Neural Networks
+
+We present OptNet, a network architecture that integrates optimization problems directly into the forward and backward passes of deep networks. These optimization problems are defined by parameters that are computed from the previous layer, and the solution to the optimization problem is passed onto the subsequent layer. The key insight is that by using the KKT conditions, we can compute the derivative of the solution to the optimization problem with respect to the problem parameters.
+
+We specifically focus on quadratic programs (QPs) of the form:
+
+minimize    (1/2) z^T Q z + q^T z
+subject to  Az = b
+            Gz <= h
+
+where z is the optimization variable (decision variable), Q is a positive semi-definite matrix (Q >= 0), q is a vector, A and G are constraint matrices, b and h are constraint vectors.
+
+The layer takes as input the QP parameters (Q, q, A, b, G, h) which are computed from the previous network layer, solves the QP, and passes the optimal solution z* to the next layer.
+
+For backward propagation, given the upstream gradient dL/dz*, we need to compute the gradients with respect to all QP parameters: dL/dQ, dL/dq, dL/dA, dL/db, dL/dG, dL/dh.
+
+The KKT conditions at the optimum give us:
+Qz* + q + A^T nu* + G^T lambda* = 0   (stationarity)
+Az* = b                                 (primal feasibility - equality)
+Gz* <= h                                (primal feasibility - inequality)
+lambda* >= 0                            (dual feasibility)
+lambda* (Gz* - h) = 0                  (complementary slackness)
+
+where nu* and lambda* are the dual variables for equality and inequality constraints respectively.

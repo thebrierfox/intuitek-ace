@@ -185,9 +185,50 @@ form.addEventListener('submit', async (e) => {
 """
 
 
-def _product_page(product_id: str, meta: dict) -> str:
+_COMING_SOON_CSS = _CSS + """
+.coming-soon-box {
+  background: #0d1111;
+  border: 1px solid #1a2a2a;
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.4rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #7aabb8;
+  line-height: 1.6;
+}
+.coming-soon-box strong { color: #a3d4e0; }
+"""
+
+
+def _product_page(product_id: str, meta: dict, activated: bool = True) -> str:
     features_li = "\n".join(f"<li>{f}</li>" for f in meta["features"])
     btn_label = f"Buy {meta['name']} for {meta['price']} →"
+
+    if not activated:
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{meta['name']} — IntuiTek¹</title>
+  <style>{_COMING_SOON_CSS}</style>
+</head>
+<body>
+<div class="card">
+  <p class="brand"><a href="/byok/">IntuiTek¹ Store</a> / BYOK Download</p>
+  <h1>{meta['name']}</h1>
+  <p class="tagline">{meta['tagline']}</p>
+  <p class="description">{meta['description']}</p>
+  <ul class="features">{features_li}</ul>
+  <div class="coming-soon-box">
+    <strong>Coming soon.</strong> This product is in final activation. Check back in 24–48 hours, or email
+    <a href="mailto:kyle@intuitek.ai" style="color:#7aabb8;">kyle@intuitek.ai</a> to be notified when it's live.
+  </div>
+  <p class="footer" style="margin-top:2rem;">~K¹ (William Kyle Million) / <a href="https://intuitek.ai">IntuiTek¹</a> · <a href="/byok/">View all tools</a></p>
+</div>
+</body>
+</html>"""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -352,11 +393,13 @@ async def byok_store():
 
 @router.get("/{product}", response_class=HTMLResponse)
 async def byok_product_page(product: str):
-    """Product page with email checkout form."""
+    """Product page with email checkout form (or coming-soon if price not yet set)."""
     meta = _PRODUCTS.get(product)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Unknown product: {product}")
-    return HTMLResponse(_product_page(product, meta))
+    price_id = os.environ.get(meta["price_env"], "")
+    activated = bool(price_id)
+    return HTMLResponse(_product_page(product, meta, activated=activated))
 
 
 class CheckoutRequest(BaseModel):

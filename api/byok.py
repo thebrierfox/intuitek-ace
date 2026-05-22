@@ -3,7 +3,9 @@ IntuiTek¹ — BYOK Product Delivery
 Downloads Python tools after one-time Stripe payment ($29).
 
 Flow:
-  POST /byok/{product}/checkout       → Stripe Checkout Session URL
+  GET  /byok/                           → store index (all products)
+  GET  /byok/{product}                  → product page with email checkout form
+  POST /byok/{product}/checkout         → Stripe Checkout Session URL
   GET  /byok/{product}/download/{token} → verify payment, stream ZIP
 
 Products:
@@ -25,15 +27,15 @@ from pathlib import Path
 
 import stripe
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr
 
 log = logging.getLogger("ace.byok")
 
 router = APIRouter(prefix="/byok", tags=["byok"])
 
-_DB_PATH   = os.environ.get("ACE_DB_PATH", "/data/ace.db")
-_BASE_URL  = os.environ.get("ACE_BASE_URL", "https://ace-license-server-production.up.railway.app")
+_DB_PATH    = os.environ.get("ACE_DB_PATH", "/data/ace.db")
+_BASE_URL   = os.environ.get("ACE_BASE_URL", "https://ace-license-server-production.up.railway.app")
 _RESEND_KEY = os.environ.get("RESEND_API_KEY", "")
 
 _PACKAGES_DIR = Path(__file__).parent.parent / "packages"
@@ -41,17 +43,252 @@ _PACKAGES_DIR = Path(__file__).parent.parent / "packages"
 _PRODUCTS: dict[str, dict] = {
     "moatmri": {
         "name": "MoatMRI™",
-        "description": "Intelligence-Pressure Constraint Engine",
+        "tagline": "Intelligence-Pressure Constraint Engine",
+        "description": (
+            "Pressure-test any business against 10 strategic vectors. "
+            "Outputs a Pressure Map, AI Front-Door Takeover Storyboard, "
+            "and a 90-Day Counterstrike Plan — all generated locally with your own Anthropic key."
+        ),
+        "features": [
+            "10-vector AI pressure analysis",
+            "Pressure Map with composite score",
+            "AI Front-Door Takeover Storyboard",
+            "90-Day Counterstrike Plan",
+            "Runs locally — your key, your data, zero vendor lock-in",
+            "Python 3.9+ · 3 files · no external dependencies beyond anthropic SDK",
+        ],
         "price_env": "BYOK_PRICE_MOATMRI",
         "zip_name": "moatmri.zip",
+        "price": "$29",
     },
     "doc2math": {
         "name": "DOC2MATH™",
-        "description": "Document-to-Mathematics Problem Genesis Engine",
+        "tagline": "Document-to-Mathematics Problem Genesis Engine",
+        "description": (
+            "Convert technical documents into formal mathematical problem structures. "
+            "Extracts variables, operators, constraints, objectives, and uncertainty into "
+            "Machine-Parseable Structure (MPS) JSON using the Zero-Inference Protocol — "
+            "closed-world, grounded, inference-tagged."
+        ),
+        "features": [
+            "Stage 1 MPS JSON pipeline (variables → constraints → objectives)",
+            "Zero-Inference Protocol: MISSING-marked, grounded, no hallucination",
+            "Validated against OptNet and academic optimization papers",
+            "Uncertainty and inference tracking built in",
+            "Runs locally — your key, your data, zero vendor lock-in",
+            "Python 3.9+ · 3 files · no external dependencies beyond anthropic SDK",
+        ],
         "price_env": "BYOK_PRICE_DOC2MATH",
         "zip_name": "doc2math.zip",
+        "price": "$29",
     },
 }
+
+_CSS = """
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+}
+.card { max-width: 520px; width: 100%; }
+.brand { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #555; margin-bottom: 1rem; }
+.brand a { color: #555; text-decoration: none; }
+.brand a:hover { color: #888; }
+h1 { font-size: 1.9rem; font-weight: 800; margin-bottom: 0.25rem; letter-spacing: -0.02em; }
+.tagline { font-size: 0.9rem; color: #777; margin-bottom: 1rem; }
+.description { color: #aaa; line-height: 1.6; margin-bottom: 1.5rem; font-size: 0.95rem; }
+.features { list-style: none; margin-bottom: 1.75rem; }
+.features li { padding: 0.3rem 0; font-size: 0.88rem; color: #bbb; }
+.features li::before { content: "→ "; color: #4ade80; font-weight: 700; }
+.byok-badge {
+  background: #0d1a0d;
+  border: 1px solid #1a3a1a;
+  border-radius: 0.5rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.75rem;
+  font-size: 0.82rem;
+  color: #7ab87a;
+  line-height: 1.5;
+}
+.byok-badge strong { color: #a8e6a3; }
+label { display: block; font-size: 0.8rem; color: #666; margin-bottom: 0.4rem; letter-spacing: 0.04em; text-transform: uppercase; }
+input[type=email] {
+  width: 100%;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 0.45rem;
+  color: #e0e0e0;
+  font-size: 1rem;
+  padding: 0.7rem 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type=email]:focus { border-color: #4ade80; }
+input[type=email]::placeholder { color: #444; }
+.buy-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  background: #4ade80;
+  color: #000;
+  border: none;
+  border-radius: 0.45rem;
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 0.8rem;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: -0.01em;
+}
+.buy-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.buy-btn:active { transform: translateY(0); }
+.buy-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.secure-note { font-size: 0.78rem; color: #444; margin-top: 0.65rem; text-align: center; }
+.error-msg { color: #f87171; font-size: 0.83rem; margin-top: 0.5rem; display: none; }
+.footer { margin-top: 2.5rem; font-size: 0.72rem; color: #333; text-align: center; }
+.footer a { color: #444; text-decoration: none; }
+.footer a:hover { color: #666; }
+"""
+
+_CHECKOUT_JS = """
+const form  = document.getElementById('cf');
+const btn   = document.getElementById('buy-btn');
+const errEl = document.getElementById('err');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  btn.disabled   = true;
+  btn.textContent = 'Connecting to Stripe…';
+  errEl.style.display = 'none';
+  const email = document.getElementById('email').value.trim();
+  try {
+    const res  = await fetch(window.CHECKOUT_URL, {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({email}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Checkout failed — please try again.');
+    window.location.href = data.checkout_url;
+  } catch (ex) {
+    errEl.textContent    = ex.message;
+    errEl.style.display  = 'block';
+    btn.disabled         = false;
+    btn.textContent      = ORIGINAL_BTN;
+  }
+});
+"""
+
+
+def _product_page(product_id: str, meta: dict) -> str:
+    features_li = "\n".join(f"<li>{f}</li>" for f in meta["features"])
+    btn_label = f"Buy {meta['name']} for {meta['price']} →"
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{meta['name']} — IntuiTek¹</title>
+  <meta name="description" content="{meta['tagline']} · {meta['price']} · BYOK Python tool from IntuiTek¹">
+  <style>{_CSS}</style>
+</head>
+<body>
+<div class="card">
+  <p class="brand"><a href="/byok/">IntuiTek¹ Store</a> / BYOK Download</p>
+  <h1>{meta['name']}</h1>
+  <p class="tagline">{meta['tagline']}</p>
+  <p class="description">{meta['description']}</p>
+  <ul class="features">{features_li}</ul>
+  <div class="byok-badge">
+    <strong>Bring Your Own Key.</strong> This tool runs on your machine with your own Anthropic API key.
+    IntuiTek¹ never stores your key or processes your data. One-time purchase — no subscription, no lock-in.
+  </div>
+  <form id="cf" novalidate>
+    <label for="email">Email address</label>
+    <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+    <div class="error-msg" id="err"></div>
+    <button type="submit" class="buy-btn" id="buy-btn">{btn_label}</button>
+    <p class="secure-note">Secure checkout via Stripe · Instant ZIP download after payment</p>
+  </form>
+  <p class="footer">~K¹ (William Kyle Million) / <a href="https://intuitek.ai">IntuiTek¹</a> · <a href="/byok/">View all tools</a></p>
+</div>
+<script>
+const ORIGINAL_BTN    = {repr(btn_label)};
+window.CHECKOUT_URL   = '/byok/{product_id}/checkout';
+{_CHECKOUT_JS}
+</script>
+</body>
+</html>"""
+
+
+def _store_index() -> str:
+    cards = ""
+    for pid, meta in _PRODUCTS.items():
+        cards += f"""
+  <div class="product-card">
+    <div class="product-name">{meta['name']}</div>
+    <div class="product-tagline">{meta['tagline']}</div>
+    <p class="product-desc">{meta['description'][:160]}…</p>
+    <a href="/byok/{pid}" class="product-link">Buy for {meta['price']} →</a>
+  </div>"""
+
+    store_css = _CSS + """
+.store-header { margin-bottom: 2.5rem; }
+.store-header h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem; }
+.store-header p { color: #777; font-size: 0.9rem; line-height: 1.5; }
+.products { display: flex; flex-direction: column; gap: 1.25rem; }
+.product-card {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 0.6rem;
+  padding: 1.25rem 1.4rem;
+  transition: border-color 0.15s;
+}
+.product-card:hover { border-color: #3a3a3a; }
+.product-name { font-weight: 800; font-size: 1.05rem; margin-bottom: 0.2rem; }
+.product-tagline { font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6rem; }
+.product-desc { font-size: 0.875rem; color: #999; line-height: 1.5; margin-bottom: 1rem; }
+.product-link {
+  display: inline-block;
+  background: #4ade80;
+  color: #000;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.35rem;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.product-link:hover { opacity: 0.85; }
+"""
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntuiTek¹ BYOK Store</title>
+  <meta name="description" content="BYOK Python tools from IntuiTek¹ — runs on your machine with your own Anthropic key. One-time $29 purchase.">
+  <style>{store_css}</style>
+</head>
+<body>
+<div class="card">
+  <p class="brand"><a href="https://intuitek.ai">intuitek.ai</a></p>
+  <div class="store-header">
+    <h1>IntuiTek¹ BYOK Tools</h1>
+    <p>Python tools that run on your machine with your own Anthropic API key. One-time purchase — no subscription, no vendor lock-in, no data leaves your environment.</p>
+  </div>
+  <div class="products">{cards}
+  </div>
+  <p class="footer" style="margin-top:2rem;">~K¹ (William Kyle Million) / <a href="https://intuitek.ai">IntuiTek¹</a></p>
+</div>
+</body>
+</html>"""
 
 
 # ── DATABASE ─────────────────────────────────────────────────
@@ -107,6 +344,21 @@ def _verify_payment(session_id: str) -> bool:
 
 # ── ROUTES ───────────────────────────────────────────────────
 
+@router.get("/", response_class=HTMLResponse)
+async def byok_store():
+    """BYOK store index — lists all available products."""
+    return HTMLResponse(_store_index())
+
+
+@router.get("/{product}", response_class=HTMLResponse)
+async def byok_product_page(product: str):
+    """Product page with email checkout form."""
+    meta = _PRODUCTS.get(product)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Unknown product: {product}")
+    return HTMLResponse(_product_page(product, meta))
+
+
 class CheckoutRequest(BaseModel):
     email: EmailStr
 
@@ -135,7 +387,7 @@ async def byok_checkout(product: str, body: CheckoutRequest):
             line_items=[{"price": price_id, "quantity": 1}],
             customer_email=body.email,
             success_url=f"{_BASE_URL}/byok/{product}/download/{token}",
-            cancel_url=f"{_BASE_URL}/",
+            cancel_url=f"{_BASE_URL}/byok/{product}",
             metadata={"byok_token": token, "product": product},
         )
     except stripe.error.StripeError as exc:

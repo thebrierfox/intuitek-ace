@@ -1,6 +1,6 @@
 # ACE — IntuiTek¹ Agent Commerce Engine
 
-> BYOK Python tools + AI-powered APIs. One-time purchase or pay-per-call. No subscription required.
+> BYOK Python tools + AI-powered APIs + city market intelligence. One-time purchase or pay-per-report. No subscription required.
 
 ---
 
@@ -19,6 +19,20 @@ Both tools:
 - Run locally — your Anthropic key, your data, zero vendor lock-in
 - Python 3.9+ · 3 files · no external dependencies beyond the `anthropic` SDK
 - One-time $29 purchase via Stripe — download ZIP immediately after payment
+
+---
+
+## COAP — City Opportunity Analysis (pay-per-report)
+
+Market intelligence for US cities. Identifies the highest-potential business opportunities in any US city by cross-referencing Census data, BLS employment stats, and OpenStreetMap business density — all free public sources.
+
+**[$49/report](https://api.intuitek.ai/coap/checkout) · $149/mo unlimited**
+
+- Submit city + optional focus sector
+- Receive structured analysis: demand gaps, estimated revenue ranges, startup cost bands, saturation assessment
+- Output validated example: Doniphan MO → auto repair shop recommendation ($260K–$335K Year 1 revenue, $67K–$160K startup)
+- No API key required — hosted analysis, results by email
+- Pending queue when analysis capacity is limited (email notified on completion)
 
 ---
 
@@ -145,6 +159,9 @@ ACE handles one-time product delivery:
 | GET | `/byok/{product}` | Product page with Stripe checkout |
 | POST | `/byok/{product}/checkout` | Create Stripe Checkout Session |
 | GET | `/byok/{product}/download/{token}` | Verify payment, stream ZIP |
+| POST | `/coap/checkout` | Create COAP Stripe Checkout Session |
+| GET | `/coap/form/{token}` | COAP order form (post-payment) |
+| POST | `/coap/submit/{token}` | Submit city analysis request |
 | GET | `/pricing` | Machine-readable product and pricing catalog |
 | POST | `/stripe/webhook` | Stripe event ingestion (signed) |
 | GET | `/validate` | License key validation |

@@ -107,6 +107,57 @@ AGENT_CARD = {
             },
         },
         {
+            "id": "moatmri-byok",
+            "name": "MoatMRI™ BYOK",
+            "description": (
+                "Intelligence-Pressure Constraint Engine — pressure-test any business against "
+                "10 strategic vectors. Outputs a Pressure Map, AI Front-Door Takeover Storyboard, "
+                "and a 90-Day Counterstrike Plan. Runs locally with your own Anthropic key. "
+                "Python 3.9+, 3 files, no external deps beyond the Anthropic SDK."
+            ),
+            "tags": ["competitive-intelligence", "business-strategy", "ai-tools", "byok", "local-inference"],
+            "examples": [
+                "Pressure-test my SaaS product across 10 AI displacement vectors",
+                "Generate a 90-day competitive counterstrike plan for my business",
+            ],
+            "inputModes": ["text"],
+            "outputModes": ["application/zip"],
+            "pricing": {
+                "oneTime": {
+                    "protocol": "stripe",
+                    "price_usd": 29.00,
+                    "checkout_url": "https://ace-license-server-production.up.railway.app/byok/moatmri",
+                    "description": "One-time purchase — ZIP download delivered by email",
+                },
+            },
+        },
+        {
+            "id": "doc2math-byok",
+            "name": "DOC2MATH™ BYOK",
+            "description": (
+                "Document-to-Mathematics Problem Genesis Engine — convert technical documents "
+                "into formal mathematical problem structures. Extracts variables, operators, "
+                "constraints, and objectives into Machine-Parseable Structure (MPS) JSON using "
+                "the Zero-Inference Protocol. Runs locally with your own Anthropic key. "
+                "Python 3.9+, 3 files, no external deps beyond the Anthropic SDK."
+            ),
+            "tags": ["mathematics", "document-processing", "optimization", "ai-tools", "byok", "local-inference"],
+            "examples": [
+                "Convert this operations research paper into MPS JSON with uncertainty tracking",
+                "Extract all optimization constraints from this engineering spec document",
+            ],
+            "inputModes": ["text"],
+            "outputModes": ["application/zip"],
+            "pricing": {
+                "oneTime": {
+                    "protocol": "stripe",
+                    "price_usd": 29.00,
+                    "checkout_url": "https://ace-license-server-production.up.railway.app/byok/doc2math",
+                    "description": "One-time purchase — ZIP download delivered by email",
+                },
+            },
+        },
+        {
             "id": "coap-city-analysis",
             "name": "COAP — City Opportunity Analysis",
             "description": (

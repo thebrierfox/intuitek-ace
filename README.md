@@ -1,24 +1,59 @@
 # ACE — IntuiTek¹ Agent Commerce Engine
 
-> Three AI-powered APIs. Pay per call via x402 (USDC on Base) or subscribe. Accessible by agents and developers via MCP (Streamable HTTP) and A2A protocols.
-
-**Live on Railway. 50 free trial calls. No API key required for trial.**
+> BYOK Python tools + AI-powered APIs. One-time purchase or pay-per-call. No subscription required.
 
 ---
 
-## Products
+## BYOK Tools (one-time purchase, $29 each)
 
-| API | Description | Price |
-|-----|-------------|-------|
-| **YIELD INTELLIGENCE** | Passive income opportunity scanner — high-yield dividend analysis, portfolio optimization, monthly income targeting | $1 / call |
-| **ACE Autonomous Commerce** | Execute purchases and service subscriptions on behalf of users or agents, with spending limit enforcement | $2 / call |
-| **COUNSELOR AI Strategy** | AI infrastructure strategy, MCP server selection, agent architecture consulting | $15 / call |
+Python tools that run on your machine with your own Anthropic API key. No subscription. No data leaves your environment.
 
-Subscription tiers available (Starter $29/mo · Professional $99/mo · Enterprise $499/mo).
+**[Browse the store →](https://api.intuitek.ai/byok/)**
+
+| Tool | Description | Price |
+|------|-------------|-------|
+| **[MoatMRI™](https://api.intuitek.ai/byok/moatmri)** | Pressure-test any business against 10 strategic vectors. Outputs a Pressure Map, AI Front-Door Takeover Storyboard, and 90-Day Counterstrike Plan. | $29 one-time |
+| **[DOC2MATH™](https://api.intuitek.ai/byok/doc2math)** | Convert technical documents into formal mathematical problem structures using the Zero-Inference Protocol — grounded, inference-tagged, MISSING-marked. | $29 one-time |
+
+Both tools:
+- Run locally — your Anthropic key, your data, zero vendor lock-in
+- Python 3.9+ · 3 files · no external dependencies beyond the `anthropic` SDK
+- One-time $29 purchase via Stripe — download ZIP immediately after payment
 
 ---
 
-## Discovery
+## YIELD INTELLIGENCE MCP Server (free trial, $1/call)
+
+Passive income opportunity scanner — accessible by agents and developers via MCP (Streamable HTTP).
+
+**50 free trial calls. No API key required.**
+
+Add to any MCP client (Claude Desktop, Cursor, Windsurf, Cline, etc.):
+
+```json
+{
+  "mcpServers": {
+    "yield-intelligence": {
+      "url": "https://api.intuitek.ai/yield/mcp"
+    }
+  }
+}
+```
+
+After adding, your AI assistant gains two tools:
+
+| Tool | What it does |
+|------|-------------|
+| `analyze_yield_opportunities` | Scans Treasury yields, dividend ETFs, REITs, preferred stocks, and CDs — surfaces the highest-returning options for your capital and risk tolerance |
+| `optimize_income_portfolio` | Builds or rebalances a diversified portfolio to hit a target monthly income figure, with suggested allocation percentages and rebalancing cadence |
+
+**Example prompts:**
+- *"I have $50k to invest for passive income at moderate risk. What's yielding the most right now?"*
+- *"Build me a portfolio targeting $500/month income. I prefer low volatility."*
+
+---
+
+## API Discovery
 
 ### A2A (Agent-to-Agent)
 
@@ -34,8 +69,6 @@ Streamable HTTP, spec 2025-11-25. Mount in any MCP client:
 
 ```
 https://api.intuitek.ai/yield      # YIELD INTELLIGENCE
-https://api.intuitek.ai/ace        # ACE Autonomous Commerce
-https://api.intuitek.ai/counselor  # COUNSELOR AI Strategy
 ```
 
 ### Machine-readable pricing
@@ -46,9 +79,9 @@ https://api.intuitek.ai/pricing
 
 ---
 
-## Payment
+## Payment (pay-per-call)
 
-**x402 micropayments (per call):**
+**x402 micropayments:**
 
 ```
 Asset: USDC on Base (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
@@ -56,46 +89,11 @@ payTo: 0x03d773c52B67993e60Ecb3134b17436fE03B584c
 x-payment header: follow x402 spec
 ```
 
-**Subscription (ACP):**
-
-```
-POST https://api.intuitek.ai/checkouts
-```
-
 **Trial:**
 
 ```
 50 free calls — no payment required
 ```
-
----
-
-## MCP client setup
-
-Add YIELD INTELLIGENCE to any MCP client (Claude Desktop, Cursor, Windsurf, Cline, etc.):
-
-```json
-{
-  "mcpServers": {
-    "yield-intelligence": {
-      "url": "https://mcp.intuitek.ai/yield/mcp"
-    }
-  }
-}
-```
-
-No API key required. No account. 50 free trial calls included.
-
-After adding, your AI assistant gains two tools:
-
-| Tool | What it does |
-|------|-------------|
-| `analyze_yield_opportunities` | Scans Treasury yields, dividend ETFs, REITs, preferred stocks, and CDs — surfaces the highest-returning options for your capital and risk tolerance |
-| `optimize_income_portfolio` | Builds or rebalances a diversified portfolio to hit a target monthly income figure, with suggested allocation percentages and rebalancing cadence |
-
-**Example prompts:**
-- *"I have $50k to invest for passive income at moderate risk. What's yielding the most right now?"*
-- *"Build me a portfolio targeting $500/month income. I prefer low volatility."*
 
 ---
 
@@ -127,15 +125,14 @@ curl -X POST https://api.intuitek.ai/yield/mcp \
 
 ---
 
-## License delivery (ClawMart products)
+## BYOK delivery backend
 
-ACE also serves as the backend for [IntuiTek¹ ClawMart products](https://shopclawmart.com/@thebrierfox):
+ACE handles one-time product delivery:
 
-- Stripe webhook intake (signed)
-- Fernet-encrypted license key delivery via Resend
-- License validation endpoint: `GET /validate?key=<key>`
-
-See [ClawMart store](https://shopclawmart.com/@thebrierfox) for available skill packages.
+- Stripe checkout + signed webhook intake
+- Fernet-encrypted download token generation
+- Download link delivery via Resend (email on first payment verification)
+- Download endpoint: `GET /byok/{product}/download/{token}`
 
 ---
 
@@ -144,12 +141,15 @@ See [ClawMart store](https://shopclawmart.com/@thebrierfox) for available skill 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Heartbeat — returns status, active_subscribers, mrr_cents |
+| GET | `/byok/` | BYOK store index |
+| GET | `/byok/{product}` | Product page with Stripe checkout |
+| POST | `/byok/{product}/checkout` | Create Stripe Checkout Session |
+| GET | `/byok/{product}/download/{token}` | Verify payment, stream ZIP |
 | GET | `/pricing` | Machine-readable product and pricing catalog |
 | POST | `/stripe/webhook` | Stripe event ingestion (signed) |
 | GET | `/validate` | License key validation |
-| POST | `/intake/submit` | Customer intake backend |
 | GET | `/.well-known/agent-card.json` | A2A agent card (via api.intuitek.ai) |
-| POST/GET/DELETE | `/mcp` | MCP Streamable HTTP endpoint (per server) |
+| POST/GET | `/yield/mcp` | YIELD INTELLIGENCE MCP endpoint |
 
 ---
 
@@ -157,7 +157,7 @@ See [ClawMart store](https://shopclawmart.com/@thebrierfox) for available skill 
 
 ```bash
 git clone https://github.com/thebrierfox/intuitek-ace
-cp .env.example .env  # fill in STRIPE_*, FERNET_KEY, RESEND_API_KEY
+cp .env.example .env  # fill in STRIPE_*, FERNET_KEY, RESEND_API_KEY, BYOK_PRICE_MOATMRI, BYOK_PRICE_DOC2MATH
 pip install -r requirements.txt
 uvicorn ace_server:app --reload --port 8080
 ```

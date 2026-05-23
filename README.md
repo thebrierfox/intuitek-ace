@@ -181,6 +181,17 @@ uvicorn ace_server:app --reload --port 8080
 
 See `.env.example` for all required variables.
 
+**Or pull from GitHub Container Registry:**
+
+```bash
+docker pull ghcr.io/thebrierfox/intuitek-ace:latest
+docker run -p 8080:8080 \
+  -e FERNET_KEY=your_key \
+  -e STRIPE_SECRET_KEY=your_stripe_key \
+  -e RESEND_API_KEY=your_resend_key \
+  ghcr.io/thebrierfox/intuitek-ace:latest
+```
+
 ---
 
 *Operator: ~K¹ (William Kyle Million) / IntuiTek¹ · [intuitek.ai](https://intuitek.ai)*

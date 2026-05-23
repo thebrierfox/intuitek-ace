@@ -25,6 +25,7 @@ import uuid
 import zipfile
 from pathlib import Path
 
+import httpx
 import stripe
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -358,6 +359,59 @@ def _ensure_table():
     conn.close()
 
 
+# ── EMAIL DELIVERY ───────────────────────────────────────────
+
+def _send_download_email(email: str, product_id: str, product_name: str, download_url: str) -> None:
+    """Send permanent download link to customer via Resend. Non-blocking: caller catches exceptions."""
+    if not _RESEND_KEY:
+        log.warning("RESEND_API_KEY not set — skipping download email for %s", email)
+        return
+
+    script_name = f"{product_id}.py"
+    body_text = (
+        f"Thank you for purchasing {product_name}.\n\n"
+        f"Your permanent download link:\n{download_url}\n\n"
+        f"This link is permanent — bookmark it or save this email to re-download any time.\n\n"
+        f"Getting started:\n"
+        f"  1. Unzip the downloaded file\n"
+        f"  2. Copy .env.example to .env and add your Anthropic API key (ANTHROPIC_API_KEY)\n"
+        f"  3. pip install -r requirements.txt\n"
+        f"  4. python {script_name}\n\n"
+        f"Questions: kyle@intuitek.ai\n\n"
+        f"— IntuiTek¹"
+    )
+    body_html = (
+        f"<p>Thank you for purchasing <strong>{product_name}</strong>.</p>"
+        f"<p><strong>Your permanent download link:</strong><br>"
+        f'<a href="{download_url}">{download_url}</a></p>'
+        f"<p>This link is permanent — bookmark it or save this email to re-download any time.</p>"
+        f"<h3>Getting started</h3><ol>"
+        f"<li>Unzip the downloaded file</li>"
+        f"<li>Copy <code>.env.example</code> to <code>.env</code> and add your Anthropic API key (<code>ANTHROPIC_API_KEY</code>)</li>"
+        f"<li><code>pip install -r requirements.txt</code></li>"
+        f"<li><code>python {script_name}</code></li>"
+        f"</ol>"
+        f'<p>Questions: <a href="mailto:kyle@intuitek.ai">kyle@intuitek.ai</a></p>'
+        f"<p>— IntuiTek¹</p>"
+    )
+
+    resp = httpx.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {_RESEND_KEY}", "Content-Type": "application/json"},
+        json={
+            "from": "IntuiTek¹ ACE <ace@intuitek.ai>",
+            "to": [email],
+            "subject": f"Your {product_name} download — IntuiTek¹",
+            "text": body_text,
+            "html": body_html,
+        },
+        timeout=10,
+    )
+    if resp.status_code not in (200, 201):
+        raise RuntimeError(f"Resend error {resp.status_code}: {resp.text}")
+    log.info("Download email sent to %s for %s", email, product_id)
+
+
 # ── ZIP BUILDER ──────────────────────────────────────────────
 
 def _build_zip(product: str) -> bytes:
@@ -480,6 +534,12 @@ async def byok_download(product: str, token: str):
         )
         conn2.commit()
         conn2.close()
+
+        download_url = f"{_BASE_URL}/byok/{product}/download/{token}"
+        try:
+            _send_download_email(row["email"], product, meta["name"], download_url)
+        except Exception as exc:
+            log.error("Download email failed for %s / %s: %s", product, row["email"], exc)
 
     pkg_dir = _PACKAGES_DIR / product
     if not pkg_dir.is_dir():

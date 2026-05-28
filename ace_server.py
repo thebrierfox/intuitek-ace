@@ -234,7 +234,9 @@ CREATE TABLE IF NOT EXISTS x402_payment_log (
     path TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     settled INTEGER NOT NULL DEFAULT 0,
-    tx_hash TEXT
+    tx_hash TEXT,
+    response_status INTEGER,
+    response_body TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_x402_payment_log_settled ON x402_payment_log(settled);
 
@@ -283,7 +285,9 @@ def migrate_schema():
                 path TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 settled INTEGER NOT NULL DEFAULT 0,
-                tx_hash TEXT
+                tx_hash TEXT,
+                response_status INTEGER,
+                response_body TEXT
             );
             CREATE INDEX IF NOT EXISTS idx_x402_payment_log_settled ON x402_payment_log(settled);
             CREATE TABLE IF NOT EXISTS answer_sessions (
@@ -322,6 +326,18 @@ def migrate_schema():
                     f"ALTER TABLE customers ADD COLUMN {col_name} {col_type}"
                 )
                 log.info("migrate_schema: added customers.%s %s", col_name, col_type)
+
+        # C3 fix — x402_payment_log idempotency columns (response cache)
+        x402_cols = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(x402_payment_log)").fetchall()
+        }
+        for col_name, col_type in [("response_status", "INTEGER"), ("response_body", "TEXT")]:
+            if col_name not in x402_cols:
+                conn.execute(
+                    f"ALTER TABLE x402_payment_log ADD COLUMN {col_name} {col_type}"
+                )
+                log.info("migrate_schema: added x402_payment_log.%s %s", col_name, col_type)
 
     log.info("migrate_schema: complete")
 

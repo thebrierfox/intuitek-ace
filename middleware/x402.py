@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 log = logging.getLogger("ace.x402")
 
@@ -231,6 +231,44 @@ def _release_payment_slot(phash: str) -> None:
         log.error("x402: payment_log release failed: %s", exc)
 
 
+def _get_payment_record(phash: str) -> Optional[dict]:
+    """Return full payment record for idempotent replay handling, or None if not found."""
+    try:
+        conn = sqlite3.connect(_DB_PATH, timeout=5)
+        row = conn.execute(
+            "SELECT settled, tx_hash, response_status, response_body"
+            " FROM x402_payment_log WHERE payment_hash = ?",
+            (phash,),
+        ).fetchone()
+        conn.close()
+        if row:
+            return {
+                "settled": row[0],
+                "tx_hash": row[1],
+                "response_status": row[2],
+                "response_body": row[3],
+            }
+        return None
+    except Exception as exc:
+        log.error("x402: payment record lookup failed: %s", exc)
+        return None
+
+
+def _cache_response(phash: str, status_code: int, body_str: str) -> None:
+    """Cache the downstream response body for idempotent replay (8 KB cap)."""
+    try:
+        conn = sqlite3.connect(_DB_PATH, timeout=5)
+        conn.execute(
+            "UPDATE x402_payment_log SET response_status = ?, response_body = ?"
+            " WHERE payment_hash = ?",
+            (status_code, body_str[:8192], phash),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        log.error("x402: response cache write failed: %s", exc)
+
+
 def _is_v1_route(path: str) -> bool:
     return path.startswith("/v1/") or path == "/v1"
 
@@ -287,9 +325,38 @@ class X402Middleware(BaseHTTPMiddleware):
                 headers={"x-payment-requirements": json.dumps(reqs)},
             )
 
-        # Step 2: Claim slot atomically — prevents replay of the same proof
+        # Step 2: Claim slot atomically — prevents replay of the same proof.
+        # On replay, check if the original request completed so we can return
+        # the cached response instead of forcing the client to pay again.
         if not _claim_payment_slot(phash, path):
-            log.info("x402: replay attempt detected for %s", path)
+            record = _get_payment_record(phash)
+            if record and record["settled"] == 1:
+                if record["response_status"] and record["response_body"]:
+                    log.info("x402: idempotent replay for %s — returning cached response", path)
+                    try:
+                        cached_body = json.loads(record["response_body"])
+                    except Exception:
+                        cached_body = {"raw": record["response_body"]}
+                    return JSONResponse(
+                        status_code=record["response_status"],
+                        content=cached_body,
+                        headers={
+                            "x-payment-idempotent": "true",
+                            "x-payment-tx-hash": record["tx_hash"] or "",
+                        },
+                    )
+                # Settled but response not cached — return receipt so client knows payment landed
+                log.info("x402: replay for settled payment %s — no cached response, returning receipt", path)
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "settled",
+                        "txHash": record["tx_hash"],
+                        "note": "Payment settled. Response not cached — please verify your request completed.",
+                    },
+                    headers={"x-payment-idempotent": "true"},
+                )
+            log.info("x402: replay attempt on unsettled payment for %s", path)
             return JSONResponse(
                 status_code=402,
                 content={
@@ -318,14 +385,19 @@ class X402Middleware(BaseHTTPMiddleware):
         tx_hash = settle.get("txHash", "")
         _mark_payment_settled(phash, tx_hash)
 
-        # Verified, claimed, and settled — forward request
-        log.info(
-            "x402: payment settled via CDP for %s, txHash=%s",
-            path,
-            tx_hash,
-        )
-        response = await call_next(request)
-        response.headers["x-payment-response"] = json.dumps(
+        # Verified, claimed, and settled — forward request and cache response for idempotency
+        log.info("x402: payment settled via CDP for %s, txHash=%s", path, tx_hash)
+        upstream = await call_next(request)
+
+        # Buffer body so we can cache it and still return it to the caller
+        chunks = []
+        async for chunk in upstream.body_iterator:
+            chunks.append(chunk if isinstance(chunk, bytes) else chunk.encode())
+        body = b"".join(chunks)
+
+        _cache_response(phash, upstream.status_code, body.decode("utf-8", errors="replace"))
+
+        payment_meta = json.dumps(
             {
                 "status": "settled",
                 "network": "base",
@@ -335,4 +407,13 @@ class X402Middleware(BaseHTTPMiddleware):
                 "settleReceipt": settle.get("settleReceipt"),
             }
         )
+        response = Response(
+            content=body,
+            status_code=upstream.status_code,
+            media_type=upstream.media_type,
+        )
+        for key, value in upstream.headers.items():
+            if key.lower() not in ("content-length",):
+                response.headers[key] = value
+        response.headers["x-payment-response"] = payment_meta
         return response

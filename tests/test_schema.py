@@ -255,3 +255,77 @@ class TestMigrationIdempotency:
             "SELECT COUNT(*) as c FROM webhook_log WHERE event_id = ?", (event_id,)
         ).fetchone()["c"]
         assert count == 1, "Idempotency: duplicate webhook_log insert produced more than one row"
+
+
+# ── C3: x402_payment_log idempotency columns ─────────────────
+
+class TestC3X402IdempotencyColumns:
+    def test_response_status_column_exists_on_fresh_db(self, fresh_db):
+        cols = {row[1] for row in fresh_db.execute("PRAGMA table_info(x402_payment_log)").fetchall()}
+        assert "response_status" in cols, "C3: response_status column absent from fresh x402_payment_log"
+
+    def test_response_body_column_exists_on_fresh_db(self, fresh_db):
+        cols = {row[1] for row in fresh_db.execute("PRAGMA table_info(x402_payment_log)").fetchall()}
+        assert "response_body" in cols, "C3: response_body column absent from fresh x402_payment_log"
+
+    def test_c3_migration_adds_columns_to_legacy_db(self, tmp_path, monkeypatch):
+        """migrate_schema() must add response_status and response_body to pre-C3 Railway volumes."""
+        db_file = str(tmp_path / "pre_c3.db")
+        monkeypatch.setenv("ACE_DB_PATH", db_file)
+
+        conn = sqlite3.connect(db_file)
+        conn.execute("PRAGMA journal_mode=WAL")
+        # Minimal customers table so C2 migration block can run PRAGMA table_info(customers)
+        conn.execute("""
+            CREATE TABLE customers (
+                id TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE x402_payment_log (
+                payment_hash TEXT PRIMARY KEY,
+                path TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                settled INTEGER NOT NULL DEFAULT 0,
+                tx_hash TEXT
+            )
+        """)
+        conn.commit()
+        conn.close()
+
+        import importlib
+        import ace_server
+        importlib.reload(ace_server)
+        ace_server.migrate_schema()
+
+        conn2 = sqlite3.connect(db_file)
+        cols = {row[1] for row in conn2.execute("PRAGMA table_info(x402_payment_log)").fetchall()}
+        conn2.close()
+
+        assert "response_status" in cols, "C3: migrate_schema() did not add response_status"
+        assert "response_body" in cols, "C3: migrate_schema() did not add response_body"
+
+    def test_response_cache_roundtrip(self, fresh_db):
+        """Settled payment response can be written and read back."""
+        phash = "abc123deadbeef"
+        fresh_db.execute(
+            "INSERT INTO x402_payment_log (payment_hash, path, settled, tx_hash)"
+            " VALUES (?, '/v1/yield', 1, 'tx_abc')",
+            (phash,),
+        )
+        fresh_db.execute(
+            "UPDATE x402_payment_log SET response_status = ?, response_body = ? WHERE payment_hash = ?",
+            (200, '{"result": "ok"}', phash),
+        )
+        fresh_db.commit()
+
+        row = fresh_db.execute(
+            "SELECT settled, tx_hash, response_status, response_body"
+            " FROM x402_payment_log WHERE payment_hash = ?",
+            (phash,),
+        ).fetchone()
+        assert row["settled"] == 1
+        assert row["tx_hash"] == "tx_abc"
+        assert row["response_status"] == 200
+        assert row["response_body"] == '{"result": "ok"}'

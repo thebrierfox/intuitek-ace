@@ -254,6 +254,10 @@ def _payment_required_response(path: str) -> JSONResponse:
 
 class X402Middleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # Pass CORS preflight through — payment must not be required for OPTIONS
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         if not _is_v1_route(request.url.path):
             return await call_next(request)
 

@@ -375,9 +375,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://intuitek.ai", "https://thebrierfox.github.io"],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "x-payment", "x-payment-payload", "mcp-session-id", "Accept"],
+    expose_headers=["Mcp-Session-Id", "x-payment-response", "x-payment-requirements"],
 )
 
 
@@ -871,6 +872,64 @@ async def root():
     }
 
 # Rebuild marker: 1774668014
+
+
+# ══════════════════════════════════════════════════════════════
+# AGENT DISCOVERY ENDPOINTS
+# ══════════════════════════════════════════════════════════════
+
+@app.get("/.well-known/x402")
+async def x402_manifest():
+    """x402 payment discovery manifest — describes payment-gated routes."""
+    return {
+        "version": "1",
+        "provider": "x402",
+        "operator": "IntuiTek¹ / ~K¹ (William Kyle Million)",
+        "payTo": "0x03d773c52B67993e60Ecb3134b17436fE03B584c",
+        "network": "base",
+        "asset": "USDC",
+        "routes": [
+            {"path": "/v1/yield", "price_usd": 1.00, "description": "YIELD INTELLIGENCE — yield analysis per call"},
+            {"path": "/v1/ace",   "price_usd": 2.00, "description": "ACE Autonomous Commerce Engine per call"},
+            {"path": "/v1/counselor", "price_usd": 15.00, "description": "COUNSELOR AI Strategy Advisor per call"},
+        ],
+        "discovery": {
+            "free_paths":  ["/yield/mcp", "/ace/mcp", "/counselor/mcp"],
+            "paid_paths":  ["/v1/yield/mcp", "/v1/ace/mcp", "/v1/counselor/mcp"],
+            "agent_card":  "https://api.intuitek.ai/.well-known/agent-card.json",
+        },
+    }
+
+
+@app.get("/llms.txt")
+async def llms_txt():
+    """LLM/agent discovery manifest."""
+    from fastapi.responses import PlainTextResponse
+    content = (
+        "# IntuiTek¹ ACE — AI Financial Intelligence API\n\n"
+        "> Agent Commerce Engine. x402 micropayments. USDC on Base.\n\n"
+        "## Products\n\n"
+        "YIELD INTELLIGENCE: Passive income analysis and yield optimization. MCP-native. $1 USDC per call.\n"
+        "ACE: Autonomous commerce execution engine. $2 USDC per call.\n"
+        "COUNSELOR: AI legal strategy advisor. $15 USDC per call.\n\n"
+        "## Free Discovery (no payment)\n\n"
+        "- GET https://api.intuitek.ai/ — product catalogue\n"
+        "- POST https://api.intuitek.ai/yield/mcp — MCP initialize, tools/list (free)\n"
+        "- GET https://api.intuitek.ai/.well-known/agent-card.json — A2A Agent Card\n"
+        "- GET https://api.intuitek.ai/.well-known/x402 — payment manifest\n"
+        "- GET https://api.intuitek.ai/pricing — full pricing table\n\n"
+        "## Paid Execution (x402, USDC on Base)\n\n"
+        "- POST https://api.intuitek.ai/v1/yield/mcp — YIELD INTELLIGENCE ($1.00 USDC)\n"
+        "- POST https://api.intuitek.ai/v1/ace/mcp — ACE Engine ($2.00 USDC)\n"
+        "- POST https://api.intuitek.ai/v1/counselor/mcp — COUNSELOR ($15.00 USDC)\n\n"
+        "## Payment\n\n"
+        "Protocol: x402 (https://x402.org)\n"
+        "Network: Base (EVM)\n"
+        "Asset: USDC\n"
+        "payTo: 0x03d773c52B67993e60Ecb3134b17436fE03B584c\n"
+    )
+    return PlainTextResponse(content=content)
+
 
 # ══════════════════════════════════════════════════════════════
 # MCP SERVERS + API ROUTERS  (added below existing routes)

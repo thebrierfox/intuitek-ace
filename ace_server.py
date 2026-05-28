@@ -849,6 +849,27 @@ async def health():
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
+@app.get("/")
+async def root():
+    """Product discovery — returns IntuiTek¹ ACE catalogue and API surface."""
+    return {
+        "name": "IntuiTek¹ ACE",
+        "description": "Agent Commerce Engine — AI infrastructure products accessible via MCP and A2A protocols.",
+        "operator": "~K¹ (William Kyle Million) / IntuiTek¹",
+        "products": [
+            {"id": "yield-intelligence-pro", "name": "YIELD INTELLIGENCE Pro", "price_usd": 1.00, "protocol": "x402", "route": "/v1/yield"},
+            {"id": "ace-autonomous-commerce", "name": "ACE Autonomous Commerce Engine", "price_usd": 2.00, "protocol": "x402", "route": "/v1/ace"},
+            {"id": "counselor-ai-strategy", "name": "COUNSELOR AI Strategy Advisor", "price_usd": 15.00, "protocol": "x402", "route": "/v1/counselor"},
+        ],
+        "endpoints": {
+            "pricing": "/pricing",
+            "agent_card": "/.well-known/agent-card.json",
+            "health": "/health",
+            "yield_ui": "/yield-ui",
+        },
+        "payment": {"protocol": "x402", "network": "base", "asset": "USDC"},
+    }
+
 # Rebuild marker: 1774668014
 
 # ══════════════════════════════════════════════════════════════

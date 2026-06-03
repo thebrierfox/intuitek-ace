@@ -366,9 +366,15 @@ def _validate_production_credentials() -> None:
         )
     if errors:
         for e in errors:
-            log.critical("[ACE] STARTUP BLOCKED — %s", e)
-        raise RuntimeError("Production credential check failed:\n" + "\n".join(errors))
-    log.info("[ACE] Credential validation passed")
+            log.critical("[ACE] CREDENTIAL WARNING — %s", e)
+        # Block on Railway (production) where credentials must be configured.
+        # Non-Railway environments (Glama eval, CI, local dev) start with degraded ACE features;
+        # MCP tools (YIELD, COUNSELOR) are credential-free and will respond normally.
+        if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_SERVICE_NAME"):
+            raise RuntimeError("Production credential check failed:\n" + "\n".join(errors))
+        log.critical("[ACE] Non-production environment — starting with degraded ACE credentials. MCP tools available.")
+    else:
+        log.info("[ACE] Credential validation passed")
 
 
 @asynccontextmanager

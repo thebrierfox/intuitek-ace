@@ -988,3 +988,8 @@ app.include_router(byok_router)
 # x402 payment middleware (applies to /v1/* routes)
 app.add_middleware(X402Middleware)
 # The Answer v1.0 — deployed 2026-05-14T02:28:44Z
+
+# Glama Docker evaluation: expose /mcp at root so the standard introspection path works.
+# yield_mcp_app already imported above. This does not override existing routes — FastAPI
+# matches declared routes first; only unmatched paths (like /mcp) reach this mount.
+app.mount("/", yield_mcp_app)

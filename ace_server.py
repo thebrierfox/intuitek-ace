@@ -987,6 +987,159 @@ app.include_router(byok_router)
 
 # x402 payment middleware (applies to /v1/* routes)
 app.add_middleware(X402Middleware)
+
+
+# ══════════════════════════════════════════════════════════════
+# OPENAPI SCHEMA OVERRIDE — x402 security declarations
+# Adds: x402 security scheme, security:[] on free endpoints,
+# /v1/* paid path entries, and response schemas for x402scan.
+# ══════════════════════════════════════════════════════════════
+def _custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description="Agent Commerce Engine — AI infrastructure products accessible via MCP and A2A protocols. x402 micropayments on Base (USDC).",
+        routes=app.routes,
+    )
+
+    # Declare x402 as a security scheme — probed by x402scan
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})["x402Payment"] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Payment",
+        "description": (
+            "x402 micropayment. Set X-Payment to a base64url-encoded payment proof "
+            "(EIP-3009 TransferWithAuthorization signed on Base network, USDC). "
+            "payTo: 0x03d773c52B67993e60Ecb3134b17436fE03B584c"
+        ),
+    }
+
+    # All paths in the auto-generated spec are free (Stripe-gated or public).
+    # Declare security:[] so x402scan does not probe them as paid endpoints.
+    for _path_item in schema.get("paths", {}).values():
+        for _op in _path_item.values():
+            if isinstance(_op, dict):
+                _op.setdefault("security", [])
+
+    # Add x402-gated paid MCP paths — not in the auto-generated spec because they
+    # are mounted ASGI apps, not FastAPI routes. Declaring them lets x402scan
+    # discover, probe, and register them as paid capabilities.
+    _x402_paths = {
+        "/v1/yield/mcp": {
+            "name": "YIELD INTELLIGENCE Pro",
+            "description": "Passive income analysis and yield optimization via MCP. $1.00 USDC per call.",
+            "price_usd": 1.00,
+            "op_id": "yield_intelligence_mcp_paid",
+        },
+        "/v1/ace/mcp": {
+            "name": "ACE Autonomous Commerce Engine",
+            "description": "Autonomous commerce execution engine via MCP. $2.00 USDC per call.",
+            "price_usd": 2.00,
+            "op_id": "ace_commerce_mcp_paid",
+        },
+        "/v1/counselor/mcp": {
+            "name": "COUNSELOR AI Strategy Advisor",
+            "description": "AI infrastructure guidance and agent stack evaluation via MCP. $15.00 USDC per call.",
+            "price_usd": 15.00,
+            "op_id": "counselor_strategy_mcp_paid",
+        },
+    }
+
+    _pay_to = "0x03d773c52B67993e60Ecb3134b17436fE03B584c"
+    _asset = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+
+    for route_path, meta in _x402_paths.items():
+        schema["paths"][route_path] = {
+            "post": {
+                "tags": ["x402-paid"],
+                "summary": meta["name"],
+                "description": meta["description"],
+                "operationId": meta["op_id"],
+                "security": [{"x402Payment": []}],
+                "parameters": [],
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "method": {
+                                        "type": "string",
+                                        "title": "MCP Method",
+                                        "description": "MCP JSON-RPC method name (e.g. tools/call)",
+                                        "example": "tools/call",
+                                    },
+                                    "params": {
+                                        "type": "object",
+                                        "title": "Params",
+                                        "description": "MCP method parameters",
+                                    },
+                                    "id": {
+                                        "type": "string",
+                                        "title": "Request ID",
+                                        "description": "JSON-RPC request ID",
+                                    },
+                                },
+                            }
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful — x-payment-response header contains settlement receipt",
+                        "headers": {
+                            "x-payment-response": {
+                                "description": "JSON-encoded settlement receipt (txHash, network, protocol)",
+                                "schema": {"type": "string"},
+                            }
+                        },
+                        "content": {"application/json": {"schema": {"type": "object"}}},
+                    },
+                    "402": {
+                        "description": "Payment required — x402 v2 format. X-Payment-Requirements header is base64url-encoded JSON.",
+                        "headers": {
+                            "x-payment-requirements": {
+                                "description": "Base64url-encoded x402 v2 payment requirements",
+                                "schema": {"type": "string"},
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "x402Version": {"type": "integer", "example": 2},
+                                        "accepts": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "scheme": {"type": "string", "example": "exact"},
+                                                    "network": {"type": "string", "example": "base"},
+                                                    "maxAmountRequired": {"type": "string", "example": str(int(meta["price_usd"] * 1_000_000))},
+                                                    "payTo": {"type": "string", "example": _pay_to},
+                                                    "asset": {"type": "string", "example": _asset},
+                                                },
+                                            },
+                                        },
+                                    },
+                                }
+                            }
+                        },
+                    },
+                },
+            }
+        }
+
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi
 # The Answer v1.0 — deployed 2026-05-14T02:28:44Z
 
 # Glama Docker evaluation: expose /mcp at root so the standard introspection path works.

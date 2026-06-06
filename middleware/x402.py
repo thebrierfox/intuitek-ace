@@ -54,7 +54,7 @@ def _payment_requirements_for_path(path: str) -> dict:
             amount, description = amt, desc
             break
     return {
-        "x402Version": 1,
+        "x402Version": 2,
         "accepts": [
             {
                 "scheme": "exact",
@@ -279,14 +279,11 @@ def _extract_payment_token(request: Request) -> Optional[str]:
 
 def _payment_required_response(path: str) -> JSONResponse:
     reqs = _payment_requirements_for_path(path)
+    reqs_b64 = base64.urlsafe_b64encode(json.dumps(reqs).encode()).decode().rstrip("=")
     return JSONResponse(
         status_code=402,
-        content={
-            "error": "Payment required",
-            "x402Version": 1,
-            "paymentRequirements": reqs,
-        },
-        headers={"x-payment-requirements": json.dumps(reqs)},
+        content=reqs,
+        headers={"x-payment-requirements": reqs_b64},
     )
 
 
@@ -314,15 +311,11 @@ class X402Middleware(BaseHTTPMiddleware):
         if not verify or not verify.get("isValid"):
             reason = (verify or {}).get("invalidReason", "unverified")
             log.info("x402: payment invalid for %s — %s", path, reason)
+            reqs_b64 = base64.urlsafe_b64encode(json.dumps(reqs).encode()).decode().rstrip("=")
             return JSONResponse(
                 status_code=402,
-                content={
-                    "error": "Payment invalid",
-                    "x402Version": 1,
-                    "invalidReason": reason,
-                    "paymentRequirements": reqs,
-                },
-                headers={"x-payment-requirements": json.dumps(reqs)},
+                content={**reqs, "error": "Payment invalid", "invalidReason": reason},
+                headers={"x-payment-requirements": reqs_b64},
             )
 
         # Step 2: Claim slot atomically — prevents replay of the same proof.
@@ -357,14 +350,11 @@ class X402Middleware(BaseHTTPMiddleware):
                     headers={"x-payment-idempotent": "true"},
                 )
             log.info("x402: replay attempt on unsettled payment for %s", path)
+            reqs_b64 = base64.urlsafe_b64encode(json.dumps(reqs).encode()).decode().rstrip("=")
             return JSONResponse(
                 status_code=402,
-                content={
-                    "error": "Payment already used",
-                    "x402Version": 1,
-                    "paymentRequirements": reqs,
-                },
-                headers={"x-payment-requirements": json.dumps(reqs)},
+                content={**reqs, "error": "Payment already used"},
+                headers={"x-payment-requirements": reqs_b64},
             )
 
         # Step 3: Settle on-chain via CDP (produces cryptographic event that triggers Bazaar indexing)
@@ -372,14 +362,11 @@ class X402Middleware(BaseHTTPMiddleware):
         if not settle or not settle.get("success"):
             log.error("x402: CDP settle failed for %s", path)
             _release_payment_slot(phash)  # allow retry with same proof
+            reqs_b64 = base64.urlsafe_b64encode(json.dumps(reqs).encode()).decode().rstrip("=")
             return JSONResponse(
                 status_code=402,
-                content={
-                    "error": "Payment settlement failed",
-                    "x402Version": 1,
-                    "paymentRequirements": reqs,
-                },
-                headers={"x-payment-requirements": json.dumps(reqs)},
+                content={**reqs, "error": "Payment settlement failed"},
+                headers={"x-payment-requirements": reqs_b64},
             )
 
         tx_hash = settle.get("txHash", "")

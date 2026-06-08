@@ -61,8 +61,8 @@ PRICING = {
         },
     ],
     "mcp_servers": [
-        {"product": "yield-intelligence", "url": "https://mcp.intuitek.ai/yield", "transport": "streamable-http"},
-        {"product": "ace", "url": "https://mcp.intuitek.ai/ace", "transport": "streamable-http"},
+        {"product": "yield-intelligence", "url": "https://api.intuitek.ai/yield/mcp", "transport": "streamable-http"},
+        {"product": "ace", "url": "https://api.intuitek.ai/ace/mcp", "transport": "streamable-http"},
     ],
 }
 

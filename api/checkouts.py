@@ -35,9 +35,6 @@ PRODUCT_PRICE_MAP = {
     "yield-intelligence-pro-enterprise": {"amount": 49900, "currency": "usd"},
     "ace-autonomous-commerce-starter": {"amount": 3900, "currency": "usd"},
     "ace-autonomous-commerce-professional": {"amount": 14900, "currency": "usd"},
-    "counselor-ai-strategy-starter": {"amount": 4900, "currency": "usd"},
-    "counselor-ai-strategy-professional": {"amount": 19900, "currency": "usd"},
-
 }
 
 

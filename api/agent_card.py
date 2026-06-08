@@ -87,26 +87,6 @@ AGENT_CARD = {
             },
         },
         {
-            "id": "counselor-strategy",
-            "name": "COUNSELOR AI Strategy",
-            "description": (
-                "Expert guidance on AI infrastructure, agent architecture, MCP server selection, "
-                "and autonomous workflow design."
-            ),
-            "tags": ["ai-strategy", "architecture", "consulting", "mcp", "agents"],
-            "examples": [
-                "What MCP servers should I use for an autonomous e-commerce agent?",
-                "Evaluate LangGraph vs Claude Agent SDK for my use case",
-            ],
-            "inputModes": ["text", "application/json"],
-            "outputModes": ["application/json"],
-            "mcpServer": "https://api.intuitek.ai/counselor",
-            "pricing": {
-                "perCall": {"protocol": "x402", "price_usd": _PRICE_BY_ID["counselor-ai-strategy"], "payTo": _PAY_TO},
-                "subscription": {"protocol": "acp", "checkout_url": "https://api.intuitek.ai/checkouts"},
-            },
-        },
-        {
             "id": "moatmri-byok",
             "name": "MoatMRI™ BYOK",
             "description": (

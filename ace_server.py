@@ -882,7 +882,6 @@ async def root():
         "products": [
             {"id": "yield-intelligence-pro", "name": "YIELD INTELLIGENCE Pro", "price_usd": 1.00, "protocol": "x402", "route": "/v1/yield"},
             {"id": "ace-autonomous-commerce", "name": "ACE Autonomous Commerce Engine", "price_usd": 2.00, "protocol": "x402", "route": "/v1/ace"},
-            {"id": "counselor-ai-strategy", "name": "COUNSELOR AI Strategy Advisor", "price_usd": 15.00, "protocol": "x402", "route": "/v1/counselor"},
         ],
         "endpoints": {
             "pricing": "/pricing",
@@ -913,11 +912,10 @@ async def x402_manifest():
         "routes": [
             {"path": "/v1/yield", "price_usd": 1.00, "description": "YIELD INTELLIGENCE — yield analysis per call"},
             {"path": "/v1/ace",   "price_usd": 2.00, "description": "ACE Autonomous Commerce Engine per call"},
-            {"path": "/v1/counselor", "price_usd": 15.00, "description": "COUNSELOR AI Strategy Advisor per call"},
         ],
         "discovery": {
-            "free_paths":  ["/yield/mcp", "/ace/mcp", "/counselor/mcp"],
-            "paid_paths":  ["/v1/yield/mcp", "/v1/ace/mcp", "/v1/counselor/mcp"],
+            "free_paths":  ["/yield/mcp", "/ace/mcp"],
+            "paid_paths":  ["/v1/yield/mcp", "/v1/ace/mcp"],
             "agent_card":  "https://api.intuitek.ai/.well-known/agent-card.json",
         },
     }
@@ -932,8 +930,7 @@ async def llms_txt():
         "> Agent Commerce Engine. x402 micropayments. USDC on Base.\n\n"
         "## Products\n\n"
         "YIELD INTELLIGENCE: Passive income analysis and yield optimization. MCP-native. $1 USDC per call.\n"
-        "ACE: Autonomous commerce execution engine. $2 USDC per call.\n"
-        "COUNSELOR: AI legal strategy advisor. $15 USDC per call.\n\n"
+        "ACE: Autonomous commerce execution engine. $2 USDC per call.\n\n"
         "## Free Discovery (no payment)\n\n"
         "- GET https://api.intuitek.ai/ — product catalogue\n"
         "- POST https://api.intuitek.ai/yield/mcp — MCP initialize, tools/list (free)\n"
@@ -942,8 +939,7 @@ async def llms_txt():
         "- GET https://api.intuitek.ai/pricing — full pricing table\n\n"
         "## Paid Execution (x402, USDC on Base)\n\n"
         "- POST https://api.intuitek.ai/v1/yield/mcp — YIELD INTELLIGENCE ($1.00 USDC)\n"
-        "- POST https://api.intuitek.ai/v1/ace/mcp — ACE Engine ($2.00 USDC)\n"
-        "- POST https://api.intuitek.ai/v1/counselor/mcp — COUNSELOR ($15.00 USDC)\n\n"
+        "- POST https://api.intuitek.ai/v1/ace/mcp — ACE Engine ($2.00 USDC)\n\n"
         "## Payment\n\n"
         "Protocol: x402 (https://x402.org)\n"
         "Network: Base (EVM)\n"
@@ -958,7 +954,6 @@ async def llms_txt():
 # ══════════════════════════════════════════════════════════════
 from mcp.yield_server import yield_mcp_app
 from mcp.ace_server import ace_mcp_app
-from mcp.counselor_server import counselor_mcp_app
 from api.pricing import pricing_router
 from api.checkouts import checkouts_router
 from api.agent_card import agent_card_router
@@ -971,11 +966,9 @@ from middleware.x402 import X402Middleware
 # Free discovery paths — no x402 (Glama/Smithery connector listing, introspection)
 app.mount("/yield", yield_mcp_app)
 app.mount("/ace", ace_mcp_app)
-app.mount("/counselor", counselor_mcp_app)
 # x402-gated paid paths — same apps, protected by X402Middleware below
 app.mount("/v1/yield", yield_mcp_app)
 app.mount("/v1/ace", ace_mcp_app)
-app.mount("/v1/counselor", counselor_mcp_app)
 
 # REST API endpoints
 app.include_router(pricing_router, prefix="/pricing")
@@ -1039,12 +1032,6 @@ def _custom_openapi():
             "description": "Autonomous commerce execution engine via MCP. $2.00 USDC per call.",
             "price_usd": 2.00,
             "op_id": "ace_commerce_mcp_paid",
-        },
-        "/v1/counselor/mcp": {
-            "name": "COUNSELOR AI Strategy Advisor",
-            "description": "AI infrastructure guidance and agent stack evaluation via MCP. $15.00 USDC per call.",
-            "price_usd": 15.00,
-            "op_id": "counselor_strategy_mcp_paid",
         },
     }
 

@@ -23,7 +23,6 @@ USDC_BASE_ASSET = _CANONICAL["x402"]["asset"]
 _CHECKOUT_PRICE_MAP = {
     "yield-intelligence-pro": {"starter": 2900, "professional": 9900, "enterprise": 49900},
     "ace-autonomous-commerce": {"starter": 3900, "professional": 14900},
-    "counselor-ai-strategy": {"starter": 4900, "professional": 19900},
 }
 
 ACE_TOOLS = [
@@ -130,30 +129,10 @@ PRICING_DATA = {
             "payment_methods": ["shared_payment_token", "x402_wallet", "api_key_billing"],
             "trial": {"available": True, "calls": 25, "requires_payment": False},
         },
-        {
-            "id": "counselor-ai-strategy",
-            "name": "COUNSELOR Legal Reasoning Engine",
-            "description": "Six-agent sealed legal reasoning pipeline with Bayesian calibration and FTS5 case-law search. Per-query analysis returns case research, statute/regulation lookup, and document drafting with confidence scoring. Integrates with Microsoft 365 (email, calendar, document drafting) and Clio practice management. Production v6.0.0.",
-            "pricing_models": [
-                {"type": "per_request", "protocol": "x402", "price_usd": _PRICE_BY_ID["counselor-ai-strategy"], "unit": "tool_call"},
-                {
-                    "type": "subscription",
-                    "protocol": "acp",
-                    "checkout_url": "https://api.intuitek.ai/checkouts",
-                    "tiers": [
-                        {"name": "starter", "price_usd": 49, "period": "month", "included_calls": 200},
-                        {"name": "professional", "price_usd": 199, "period": "month", "included_calls": 2000},
-                    ],
-                },
-            ],
-            "payment_methods": ["shared_payment_token", "x402_wallet", "api_key_billing"],
-            "trial": {"available": True, "calls": 10, "requires_payment": False},
-        },
     ],
     "mcp_servers": [
         {"product": "yield-intelligence", "url": "https://mcp.intuitek.ai/yield", "transport": "streamable-http"},
         {"product": "ace", "url": "https://mcp.intuitek.ai/ace", "transport": "streamable-http"},
-        {"product": "counselor", "url": "https://mcp.intuitek.ai/counselor", "transport": "streamable-http"},
     ],
 }
 

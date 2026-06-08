@@ -22,7 +22,7 @@ AGENT_CARD = {
     "name": "IntuiTek¹ ACE",
     "description": (
         "IntuiTek¹ Autonomous Commerce Engine — AI agent infrastructure providing "
-        "yield intelligence, autonomous commerce execution, and AI strategy consulting. "
+        "yield intelligence and autonomous commerce execution. "
         "Accessible via MCP (Streamable HTTP) and A2A protocols."
     ),
     "url": "https://api.intuitek.ai",
